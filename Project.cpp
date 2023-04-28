@@ -1,23 +1,28 @@
 #include <iostream>
 #include <list>
 #include <stack>
+#include <vector>
 using namespace std;
+class Pieces;
 
-string board[8][8];
+vector< vector<Pieces*> > board(8, vector<Pieces*>(8, NULL));
 //Module 1-Pieces
 class Pieces {
 public:
 	int x, y, value;
 	string name;
+	Pieces():x(0),y(0),value(0), name("NULL") {}
 	Pieces(string pos, string name, int value):x(pos[0] - 'a' + 1), y(pos[1] - '0'), value(value), name(name) {
-		board[y - 1][x - 1] = name;
+		board[y - 1][x - 1] = this;
 	}
 
 	virtual void validMoves(string pos) = 0;
 
 	void move(string pos) {
+		board[y - 1][x - 1] = NULL;
 		x = pos[0] - 'a' + 1;
 		y = pos[1] - '0';
+		board[y - 1][x - 1] = this;
 	}
 };
 
@@ -102,7 +107,12 @@ void displayBoard() {
 	for (int i = 0; i < 8; i++) {
 		cout << i + 1 << " ";
 		for (int j = 0; j < 8; j++) {
-			cout << "| " << board[i][j] + " ";
+			cout << "| ";
+			if (board[i][j] != NULL)
+				cout << board[i][j]->name;
+			else
+				cout << "..";
+			cout << " ";
 		}
 		cout << "|\n  ";
 		for (int j = 0; j < 8; j++) {
@@ -114,16 +124,20 @@ void displayBoard() {
 	for (char a = 'a'; a < 'i'; a++) {
 		cout << "  " << a << "  ";
 	}
+	cout << endl;
 }
 
 int main() {
-	//initializing board
-	for (int i = 0; i < 8; i++)
-		for (int j = 0; j < 8; j++)
-			board[j][i] = "..";
-
 	Player B(false);
 	Player A(true);
-	displayBoard();
+	do {
+		string p1, p2;
+		displayBoard();
+		cout << "Enter current position of piece: ";
+		cin >> p1;
+		cout << "Enter move: ";
+		cin >> p2;
+		board[p1[1] - '1'][p1[0] - 'a']->move(p2);
+	} while (true);
 	return 0;
 }
