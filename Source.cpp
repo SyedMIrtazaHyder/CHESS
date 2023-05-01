@@ -195,7 +195,7 @@ public:
 class Player {
 	bool isWhite;
 	list<Pieces*> pieces;
-	//These are the pieces that have been moved
+	//These are the pieces that have been moved/captured
 	stack<Pieces*> movedPieces;
 	int counter;
 public:
@@ -208,9 +208,9 @@ public:
 		for (char i = 'a'; i < 'i'; i++)
 		{
 			if (isWhite)
-				pieces.push_back(new Pawn(string(1, i) + "2", "w"));
+				pieces.push_back(new Pawn(string(1, i) + "7", "w"));
 			else
-				pieces.push_back(new Pawn(string(1, i) + "7", "b"));
+				pieces.push_back(new Pawn(string(1, i) + "2", "b"));
 		}
 
 		if (isWhite) {
@@ -268,6 +268,54 @@ public:
 		}
 		else
 			cout << "No more Undo's possible" << endl;
+	}
+
+	void Captured(Pieces* piece)
+	{
+		piece->prevX.push(piece->x);
+		piece->prevY.push(piece->y);
+
+		board[piece->y][piece->x] = NULL;
+
+		this->pushPiece(piece);
+	}
+	
+	void Promotion(Pieces* piece)
+	{
+		if (piece->name[1] == 'P' && (piece->y == 0 || piece->y == 7))
+		{
+			char choice = ' ';
+			string piecePosition = "Z0";
+			piecePosition[0] = piece->x + 'a';
+			piecePosition[1] = piece->y + '1';
+
+			Captured(piece);
+
+			cout << "\n\n";
+			cout << "What would you like to promote your pawn into?\n";
+			cout << "N for Knight - Q for Queen - B for Bishop - R for Rook\n" << "choice: ";
+			while (choice != 'N' && choice != 'Q' && choice != 'B' && choice != 'R')
+				cin >> choice;
+
+			switch (choice)
+			{
+			case 'N':
+				pieces.push_back(new Knight(piecePosition, string(1,piece->name[0])));
+				break;
+			case 'Q':
+				pieces.push_back(new Queen(piecePosition, string(1, piece->name[0])));
+				break;
+			case 'B':
+				pieces.push_back(new Bishop(piecePosition, string(1, piece->name[0])));
+				break;
+			case 'R':
+				pieces.push_back(new Knight(piecePosition, string(1, piece->name[0])));
+				break;
+			}
+
+			//Cannot undo a Promotion
+			counter = 0;
+		}
 	}
 };
 //Module 3-Board
@@ -361,11 +409,12 @@ int main() {
 			A.undo();
 			B.undo();
 
+
 			//Undo for the Opponent
 			//A.undo();
 			//B.undo();
 
-			//system("CLS");
+			system("CLS");
 			continue;
 		}
 
@@ -386,34 +435,25 @@ int main() {
 			{
 				//Pushing the enemy piece onto the Undo Stack
 				if (board[p2[1] - '1'][p2[0] - 'a'] != NULL)
-					B.pushPiece(board[p2[1] - '1'][p2[0] - 'a']);
-
+					B.Captured(board[p2[1] - '1'][p2[0] - 'a']);
 
 				//En Passant requires this in order to work. Must be repeated for the opponent
 				//In case they use en passant as well
 				else if (Enpassant && isWhite)
-				{
-					board[p2[1] - '1' - 1][p2[0] - 'a']->prevX.push(p2[0] - 'a');
-					board[p2[1] - '1' - 1][p2[0] - 'a']->prevY.push(p2[1] - '1' - 1);
+					B.Captured(board[p2[1] - '1' - 1][p2[0] - 'a']);
 
-					B.pushPiece(board[p2[1] - '1' - 1][p2[0] - 'a']);
-					board[p2[1] - '1' - 1][p2[0] - 'a'] = NULL;
-				}
 				else if (Enpassant)
-				{
-
-					board[p2[1] - '1' + 1][p2[0] - 'a']->prevX.push(p2[0] - 'a');
-					board[p2[1] - '1' + 1][p2[0] - 'a']->prevY.push(p2[1] - '1' + 1);
-					
-					B.pushPiece(board[p2[1] - '1' + 1][p2[0] - 'a']);
-					board[p2[1] - '1' + 1][p2[0] - 'a'] = NULL;
-				}
-
+					B.Captured(board[p2[1] - '1' + 1][p2[0] - 'a']);
 				Enpassant = false;
 
 				//Pushing previous Piece and moving it
 				A.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
+
+				//Moving the piece on the board
 				board[p1[1] - '1'][p1[0] - 'a']->move(p2);
+
+				//Promotion in case it happens
+				A.Promotion(board[p2[1] - '1'][p2[0] - 'a']);
 			}
 			else
 			{
@@ -430,7 +470,7 @@ int main() {
 
 			//B.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
 			//board[p1[1] - '1'][p1[0] - 'a']->move(p2);
-			//system("CLS");
+			system("CLS");
 			break;
 		}
 
