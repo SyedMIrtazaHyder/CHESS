@@ -203,14 +203,17 @@ public:
 	Player(bool isWhite) : isWhite(isWhite) {
 		//The counter keeps track of how many undo's the player can do
 		counter = 0;
+		
+		//Adding a buffer element so that the stack does not give errors
+		movedPieces.push(NULL);
 
 		//placing pawns
 		for (char i = 'a'; i < 'i'; i++)
 		{
 			if (isWhite)
-				pieces.push_back(new Pawn(string(1, i) + "7", "w"));
+				pieces.push_back(new Pawn(string(1, i) + "2", "w"));
 			else
-				pieces.push_back(new Pawn(string(1, i) + "2", "b"));
+				pieces.push_back(new Pawn(string(1, i) + "7", "b"));
 		}
 
 		if (isWhite) {
@@ -226,7 +229,7 @@ public:
 
 		else {
 			pieces.push_back(new King("e8", "b"));
-			pieces.push_back(new Queen("d3", "b"));
+			pieces.push_back(new Queen("d8", "b"));
 			pieces.push_back(new Bishop("c8", "b"));
 			pieces.push_back(new Bishop("f8", "b"));
 			pieces.push_back(new Knight("g8", "b"));
@@ -246,11 +249,11 @@ public:
 	}
 
 	void undo() {
-		if (movedPieces.size() > 0 && counter > 0)
-		{
-			if (isWhite)
-				cout << "White has " << movedPieces.size() << " pieces" << "and " << counter << " undoes" << endl;
+		if (movedPieces.top() == NULL && movedPieces.size() > 1)
+			movedPieces.pop();
 
+		else if (movedPieces.size() > 1 && counter > 0)
+		{
 			int x = movedPieces.top()->prevX.top();
 			int y = movedPieces.top()->prevY.top();
 
@@ -266,8 +269,6 @@ public:
 
 			counter--;
 		}
-		else
-			cout << "No more Undo's possible" << endl;
 	}
 
 	void Captured(Pieces* piece)
@@ -441,9 +442,11 @@ int main() {
 				//In case they use en passant as well
 				else if (Enpassant && isWhite)
 					B.Captured(board[p2[1] - '1' - 1][p2[0] - 'a']);
-
 				else if (Enpassant)
 					B.Captured(board[p2[1] - '1' + 1][p2[0] - 'a']);
+				//Adding in NULL to make sure Undo's work properly
+				else
+					B.pushPiece(NULL);
 				Enpassant = false;
 
 				//Pushing previous Piece and moving it
