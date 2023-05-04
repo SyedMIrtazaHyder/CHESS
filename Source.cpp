@@ -28,6 +28,29 @@ public:
 		prevY.push(y);
 	}
 
+	//Used to see if a certain piece can be captured by another Piece
+	bool isChecked() {
+		for (int i = 0; i < 8; i++)
+		{
+			for (int j = 0; j < 8; j++)
+			{
+				//if the pieces have the same colour, it continues to the next piece on the board
+				if (board[i][j] == NULL || board[this->y][this->x]->name[0] == board[i][j]->name[0])
+					continue;
+
+				string PiecePos = "  ";
+				PiecePos[1] = this->y + '1';
+				PiecePos[0] = this->x + 'a';
+
+				if ((board[i][j])->validMoves(PiecePos, (board[i][j])->name))
+					return true;
+			}
+
+		}
+
+		return false;
+	}
+
 	bool validMoves(string pos, string PieceType)
 	{
 		int* position = decodePosition(pos);
@@ -156,7 +179,7 @@ public:
 		
 		board[y][x] = NULL;
 		x = pos[0] - 'a';
-		y = pos[1] - '0' - 1;
+		y = pos[1] - '1';
 		board[y][x] = this;
 	}
 };
@@ -237,6 +260,10 @@ public:
 			pieces.push_back(new Rook("h8", "b"));
 			pieces.push_back(new Rook("a8", "b"));
 		}
+	}
+
+	list<Pieces*>& getPieces() {
+		return pieces;
 	}
 
 	void pushPiece(Pieces* pushed) {
@@ -381,14 +408,27 @@ bool isvalid(bool playerColour, string space)
 	return true;
 }
 
-int main() {
-	srand (unsigned(time(NULL)));
-	bool isWhite = rand()%2;
+bool PlayerTurn(Player &Playing, Player &Enemy)
+{
+
+}
+
+void AITurn()
+{
+	
+}
+
+
+void vsAIGame()
+{
+	system("CLS");
+	bool isWhite = rand() % 2;
+	bool CheckRollback = false;
 
 	if (isWhite)
-		cout << "You are the White Player" << endl;
+		cout << "You are the White Player." << endl;
 	else
-		cout << "You are the Black Player" << endl;
+		cout << "You are the Black Player." << endl;
 
 	//The user will always be Player A
 	Player A(isWhite);
@@ -400,9 +440,15 @@ int main() {
 		displayBoard();
 
 		p1 = " ";
-		cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "Your choice: ";
-		while (p1 != "1" && p1 != "2")
+		cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
+		while (p1 != "1" && p1 != "2" && p1 != "3")
 			cin >> p1;
+
+		if (p1 == "3")
+		{
+			cout << endl << "The Player gives up. AI wins." << endl;
+			break;
+		}
 
 		if (p1 == "2")
 		{
@@ -414,7 +460,6 @@ int main() {
 			//Undo for the Opponent
 			//A.undo();
 			//B.undo();
-
 			system("CLS");
 			continue;
 		}
@@ -431,6 +476,7 @@ int main() {
 
 			cout << "Enter move: ";
 			cin >> p2;
+
 
 			if (board[p1[1] - '1'][p1[0] - 'a']->validMoves(p2, board[p1[1] - '1'][p1[0] - 'a']->name))
 			{
@@ -449,6 +495,7 @@ int main() {
 					B.pushPiece(NULL);
 				Enpassant = false;
 
+
 				//Pushing previous Piece and moving it
 				A.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
 
@@ -466,9 +513,39 @@ int main() {
 			break;
 		}
 
+		//Checking if the Player's king has been Checked.
+		typename list<Pieces*>::iterator iterPieces = A.getPieces().begin();
+		for (int i = 0; i < A.getPieces().size(); i++)
+		{
+			if ((*iterPieces)->name[1] == 'K')
+			{
+				if ((*iterPieces)->isChecked())
+				{
+					A.undo();
+					B.undo();
+
+					system("CLS");
+					CheckRollback = true;
+					cout << endl << "Your King is Checked. You cannot make that move." << endl << endl;
+				}
+				else
+					break;
+			}
+
+			iterPieces++;
+		}
+
+		//return to the Player's turn if it's king was checked because of the last move.
+		if (CheckRollback)
+		{
+			CheckRollback = false;
+			continue;
+		}
+
+		//AI's turn
 		while (true)
 		{
-			//AI's turn
+
 			//Stuff added down here
 
 			//B.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
@@ -478,5 +555,54 @@ int main() {
 		}
 
 	} while (true);
+}
+
+void vsPlayerGame()
+{
+	system("CLS");
+	bool isWhite = rand() % 2;
+	bool CheckRollback = false;
+
+	if (isWhite)
+		cout << "Player 1 will Control White and Player 2 will Control Black." << endl;
+	else
+		cout << "Player 1 will Control Black and Player 2 will Control White." << endl;
+
+	Player A(isWhite);
+	Player B(!isWhite);
+
+}
+
+int main() {
+	srand (unsigned(time(NULL)));
+
+	while (true)
+	{
+		system("CLS");
+
+		int choice = 0;
+		cout << "\t\t         CHESS" << endl;
+		cout << "\t\tWhat kind of game would you like to play?" << endl;
+		cout << "\t\t1. vs AI" << endl << "\t\t2. vs Player" << endl << "\t\t3.Quit" << endl;
+		cout << "\t\tYour choice: ";
+		while (choice != 1 && choice != 2 && choice != 3)
+			cin >> choice;
+
+		switch (choice)
+		{
+		case 1:
+			vsAIGame();
+			break;
+		case 2:
+			vsPlayerGame();
+			break;
+		case 3:
+			break;
+		}
+
+		if (choice == 3)
+			break;
+	}
+
 	return 0;
 }
