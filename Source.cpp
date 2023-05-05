@@ -3,10 +3,12 @@
 #include <stack>
 #include <vector>
 #include <math.h>
+#include <conio.h>
 
 using namespace std;
 class Pieces;
 int* decodePosition(string pos);
+bool validPosition(string Space);
 
 
 bool Enpassant = false;
@@ -30,6 +32,10 @@ public:
 
 	//Used to see if a certain piece can be captured by another Piece
 	bool isChecked() {
+		string PiecePos = "  ";
+		PiecePos[1] = this->y + '1';
+		PiecePos[0] = this->x + 'a';
+
 		for (int i = 0; i < 8; i++)
 		{
 			for (int j = 0; j < 8; j++)
@@ -38,12 +44,102 @@ public:
 				if (board[i][j] == NULL || board[this->y][this->x]->name[0] == board[i][j]->name[0])
 					continue;
 
-				string PiecePos = "  ";
+				if ((board[i][j])->validMoves(PiecePos, (board[i][j])->name))
+					return true;
+			}
+
+		}
+
+		return false;
+	}
+
+	//Possible for extremely small fringe cases to not be checkmated.
+	//Testing required.
+	bool Checkmate()
+	{
+		//Three conditions for a checkmate
+		//1. The King is Checked
+		//2. The King's has no unchecked Valid Spaces
+		//3. the Pieces that are checking the King are not Checked
+
+		string PiecePos = "  ";
+		PiecePos[1] = this->y + '1';
+		PiecePos[0] = this->x + 'a';
+
+		//Getting all valid spaces of the king
+		string isvalidSpace = "  ";
+		vector<string> validSpaces;
+		for (int k = -1; k < 2; k++)
+			for (int j = -1; j < 2; j++)
+			{
+				isvalidSpace[1] = PiecePos[1] + k;
+				isvalidSpace[0] = PiecePos[0] + j;
+
+				//checking if space is in bounds and if it can be moved to
+				if (validPosition(isvalidSpace) && validMoves(isvalidSpace,name))
+					validSpaces.push_back(isvalidSpace);
+			}
+
+		for (int i = 0; i < 8; i++)
+		{
+			for (int j = 0; j < 8; j++)
+			{
+				//resetting their position on every iteration of loop
 				PiecePos[1] = this->y + '1';
 				PiecePos[0] = this->x + 'a';
 
-				if ((board[i][j])->validMoves(PiecePos, (board[i][j])->name))
+				//if the pieces have the same colour, it continues to the next piece on the board
+				if (board[i][j] == NULL || board[this->y][this->x]->name[0] == board[i][j]->name[0])
+					continue;
+
+				//Removing all valid spaces for enemy pieces
+				//as long as the pieces themselves are not checked.
+				if (!board[i][j]->isChecked())
+					for (int k = 0; k < validSpaces.size(); k++)
+						if (board[i][j]->validMoves(validSpaces[k], board[i][j]->name))
+						{
+							validSpaces.erase(validSpaces.begin() + k);
+							k = k - 1;
+						}
+
+				//Checking if the King is checked
+				if (board[i][j]->validMoves(PiecePos, board[i][j]->name))
+				{
+
+					for (int k = 0; k < validSpaces.size(); k++)
+					{
+						//If the move overtakes another piece, it needs to be stored to be undone somehow
+						//Because at this point player's do not exist, this logic needs to be used
+						Pieces* overTaken = board[validSpaces[k][1] - '1'][validSpaces[k][0] - 'a'];
+						if (overTaken != NULL)
+						{
+							overTaken->prevX.push(overTaken->x);
+							overTaken->prevY.push(overTaken->y);
+						}
+
+						move(validSpaces[k]);
+
+						if (!isChecked())
+						{
+							//Same if as below because return statement cuts it off
+							if (overTaken != NULL)
+								overTaken->undoMove();
+
+							//undoMove();
+							return false;
+						}
+
+						//This undo needs to be done first as it nulls its previous positions
+						//if the overtaken piece's move was undone first, then this undo would make it NULL again
+						undoMove();
+
+						//puts the captured piece back so the board is the same as before.
+						if (overTaken != NULL)
+							overTaken->undoMove();
+					}
+
 					return true;
+				}
 			}
 
 		}
@@ -182,6 +278,20 @@ public:
 		y = pos[1] - '1';
 		board[y][x] = this;
 	}
+
+	void undoMove()
+	{
+		int oldx = prevX.top();
+		int oldy = prevY.top();
+
+		board[y][x] = NULL;
+		x = oldx;
+		y = oldy;
+		board[y][x] = this;
+
+		prevX.pop();
+		prevY.pop();
+	}
 };
 
 class Pawn :public Pieces {
@@ -192,6 +302,7 @@ public:
 class King :public Pieces {
 public:
 	King(string pos, string color) :Pieces(pos, color + "K", 1) {}
+	
 };
 
 class Queen :public Pieces {
@@ -257,8 +368,8 @@ public:
 			pieces.push_back(new Bishop("f8", "b"));
 			pieces.push_back(new Knight("g8", "b"));
 			pieces.push_back(new Knight("b8", "b"));
-			pieces.push_back(new Rook("h8", "b"));
 			pieces.push_back(new Rook("a8", "b"));
+			pieces.push_back(new Rook("h8", "b"));
 		}
 	}
 
@@ -281,17 +392,7 @@ public:
 
 		else if (movedPieces.size() > 1 && counter > 0)
 		{
-			int x = movedPieces.top()->prevX.top();
-			int y = movedPieces.top()->prevY.top();
-
-			board[movedPieces.top()->y][movedPieces.top()->x] = NULL;
-			movedPieces.top()->x = x;
-			movedPieces.top()->y = y;
-			board[y][x] = movedPieces.top();
-
-			movedPieces.top()->prevX.pop();
-			movedPieces.top()->prevY.pop();
-
+			movedPieces.top()->undoMove();
 			movedPieces.pop();
 
 			counter--;
@@ -408,9 +509,24 @@ bool isvalid(bool playerColour, string space)
 	return true;
 }
 
+//This function checks if the user's input is validated
+bool validPosition(string Space)
+{
+	try
+		{
+			board.at(Space[1] - '1').at(Space[0] - 'a');
+			return true;
+		}
+	catch (...)
+		{
+			return false;
+		}
+
+}
+
 bool PlayerTurn(Player &Playing, Player &Enemy)
 {
-
+	return false;
 }
 
 void AITurn()
@@ -424,6 +540,11 @@ void vsAIGame()
 	system("CLS");
 	bool isWhite = rand() % 2;
 	bool CheckRollback = false;
+
+	//0 means the game is going
+	//1 means you won
+	//2 means you lost
+	int WinorLose = 0;
 
 	if (isWhite)
 		cout << "You are the White Player." << endl;
@@ -439,16 +560,14 @@ void vsAIGame()
 		string p1, p2;
 		displayBoard();
 
-		p1 = " ";
 		cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
-		while (p1 != "1" && p1 != "2" && p1 != "3")
+		do
+		{
 			cin >> p1;
+		} while (p1 != "1" && p1 != "2" && p1 != "3");
 
 		if (p1 == "3")
-		{
-			cout << endl << "The Player gives up. AI wins." << endl;
 			break;
-		}
 
 		if (p1 == "2")
 		{
@@ -468,16 +587,25 @@ void vsAIGame()
 		while (true)
 		{
 			//User's turn
-			cout << "Enter current position of piece: ";
-			cin >> p1;
+			do
+			{
+				cout << "Enter current position of piece: ";
+				cin >> p1;
 
+			} while (!validPosition(p1));
+
+			//This checks if the piece chosen is actually the player's
 			if (!isvalid(isWhite, p1))
 				continue;
 
-			cout << "Enter move: ";
-			cin >> p2;
+			do
+			{
+				cout << "Enter move: ";
+				cin >> p2;
 
+			} while (!validPosition(p2));
 
+			
 			if (board[p1[1] - '1'][p1[0] - 'a']->validMoves(p2, board[p1[1] - '1'][p1[0] - 'a']->name))
 			{
 				//Pushing the enemy piece onto the Undo Stack
@@ -510,15 +638,30 @@ void vsAIGame()
 				cout << "Invalid Move" << endl;
 				continue;
 			}
+
 			break;
 		}
 
-		//Checking if the Player's king has been Checked.
+		//Checking if the Enemy king is Checkmated
+		typename list<Pieces*>::iterator iterPiecesB = B.getPieces().begin();
+		for (int i = 0; i < B.getPieces().size(); i++)
+		{
+			if ((*iterPiecesB)->name[1] == 'K' && (*iterPiecesB)->Checkmate())
+			{
+				cout << "The enemy king has been checkmated" << endl;
+				WinorLose = 1;
+			}
+			
+			iterPiecesB++;
+		}
+
+		//Finding the King in the Player's pieces
 		typename list<Pieces*>::iterator iterPieces = A.getPieces().begin();
 		for (int i = 0; i < A.getPieces().size(); i++)
 		{
 			if ((*iterPieces)->name[1] == 'K')
 			{
+				//if it's checked, undoing the player's last move
 				if ((*iterPieces)->isChecked())
 				{
 					A.undo();
@@ -554,7 +697,15 @@ void vsAIGame()
 			break;
 		}
 
-	} while (true);
+	} while (WinorLose == 0);
+
+
+	if (WinorLose == 1)
+		cout << endl << "Congratulations! You've won the game!";
+	else
+		cout << endl << "Sorry, the AI has won the game!";
+
+	_getch();
 }
 
 void vsPlayerGame()
@@ -578,6 +729,12 @@ int main() {
 
 	while (true)
 	{
+		//Clearing the board for the next game
+		for (int i = 0; i < 8; i++)
+			for (int j = 0; j < 8; j++)
+				board[i][j] = NULL;
+
+		//Clearing the screen of clutter
 		system("CLS");
 
 		int choice = 0;
