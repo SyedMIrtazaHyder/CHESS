@@ -62,6 +62,8 @@ public:
 		//2. The King's has no unchecked Valid Spaces
 		//3. the Pieces that are checking the King are not Checked
 
+		bool chance = true;
+
 		string PiecePos = "  ";
 		PiecePos[1] = this->y + '1';
 		PiecePos[0] = this->x + 'a';
@@ -76,72 +78,71 @@ public:
 				isvalidSpace[0] = PiecePos[0] + j;
 
 				//checking if space is in bounds and if it can be moved to
-				if (validPosition(isvalidSpace) && validMoves(isvalidSpace,name))
+				if (validPosition(isvalidSpace) && validMoves(isvalidSpace, name))
 					validSpaces.push_back(isvalidSpace);
 			}
 
-		for (int i = 0; i < 8; i++)
+
+		//Checking if the King is checked
+		if (isChecked())
 		{
-			for (int j = 0; j < 8; j++)
+			for (int i = 0; i < 8; i++)
 			{
-				//resetting their position on every iteration of loop
-				PiecePos[1] = this->y + '1';
-				PiecePos[0] = this->x + 'a';
-
-				//if the pieces have the same colour, it continues to the next piece on the board
-				if (board[i][j] == NULL || board[this->y][this->x]->name[0] == board[i][j]->name[0])
-					continue;
-
-				//Removing all valid spaces for enemy pieces
-				//as long as the pieces themselves are not checked.
-				if (!board[i][j]->isChecked())
-					for (int k = 0; k < validSpaces.size(); k++)
-						if (board[i][j]->validMoves(validSpaces[k], board[i][j]->name))
-						{
-							validSpaces.erase(validSpaces.begin() + k);
-							k = k - 1;
-						}
-
-				//Checking if the King is checked
-				if (board[i][j]->validMoves(PiecePos, board[i][j]->name))
+				for (int j = 0; j < 8; j++)
 				{
 
-					for (int k = 0; k < validSpaces.size(); k++)
+					//if the pieces have the same colour, it continues to the next piece on the board
+					if (board[i][j] == NULL || board[this->y][this->x]->name[0] == board[i][j]->name[0])
+						continue;
+
+					//This is to check if there is more than one piece checking the king
+					if (board[i][j]->isChecked() && chance && board[i][j]->validMoves(PiecePos, board[i][j]->name))
 					{
-						//If the move overtakes another piece, it needs to be stored to be undone somehow
-						//Because at this point player's do not exist, this logic needs to be used
-						Pieces* overTaken = board[validSpaces[k][1] - '1'][validSpaces[k][0] - 'a'];
-						if (overTaken != NULL)
-						{
-							overTaken->prevX.push(overTaken->x);
-							overTaken->prevY.push(overTaken->y);
-						}
-
-						move(validSpaces[k]);
-
-						if (!isChecked())
-						{
-							//Same if as below because return statement cuts it off
-							if (overTaken != NULL)
-								overTaken->undoMove();
-
-							//undoMove();
-							return false;
-						}
-
-						//This undo needs to be done first as it nulls its previous positions
-						//if the overtaken piece's move was undone first, then this undo would make it NULL again
-						undoMove();
-
-						//puts the captured piece back so the board is the same as before.
-						if (overTaken != NULL)
-							overTaken->undoMove();
+						chance = false;
+						continue;
 					}
 
-					return true;
-				}
-			}
 
+					if (board[i][j]->validMoves(PiecePos, board[i][j]->name))
+					{
+						for (int k = 0; k < validSpaces.size(); k++)
+						{
+							//If the move overtakes another piece, it needs to be stored to be undone somehow
+							//Because at this point player's do not exist, this logic needs to be used
+							Pieces* overTaken = board[validSpaces[k][1] - '1'][validSpaces[k][0] - 'a'];
+							if (overTaken != NULL)
+							{
+								overTaken->prevX.push(overTaken->x);
+								overTaken->prevY.push(overTaken->y);
+							}
+
+							move(validSpaces[k]);
+
+							if (!isChecked())
+							{
+								undoMove();
+
+								//Same if as below because return statement cuts it off
+								if (overTaken != NULL)
+									overTaken->undoMove();
+
+								return false;
+							}
+
+							//This undo needs to be done first as it nulls its previous positions
+							//if the overtaken piece's move was undone first, then this undo would make it NULL again
+							undoMove();
+
+							//puts the captured piece back so the board is the same as before.
+							if (overTaken != NULL)
+								overTaken->undoMove();
+						}
+
+						return true;
+					}
+				}
+
+			}
 		}
 
 		return false;
