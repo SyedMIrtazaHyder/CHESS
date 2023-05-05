@@ -9,6 +9,7 @@ using namespace std;
 class Pieces;
 int* decodePosition(string pos);
 bool validPosition(string Space);
+void displayBoard();
 
 
 bool Enpassant = false;
@@ -41,7 +42,7 @@ public:
 			for (int j = 0; j < 8; j++)
 			{
 				//if the pieces have the same colour, it continues to the next piece on the board
-				if (board[i][j] == NULL || board[this->y][this->x]->name[0] == board[i][j]->name[0])
+				if (board[i][j] == NULL || name[0] == board[i][j]->name[0])
 					continue;
 
 				if ((board[i][j])->validMoves(PiecePos, (board[i][j])->name))
@@ -79,7 +80,9 @@ public:
 
 				//checking if space is in bounds and if it can be moved to
 				if (validPosition(isvalidSpace) && validMoves(isvalidSpace, name))
+				{
 					validSpaces.push_back(isvalidSpace);
+				}
 			}
 
 
@@ -92,7 +95,7 @@ public:
 				{
 
 					//if the pieces have the same colour, it continues to the next piece on the board
-					if (board[i][j] == NULL || board[this->y][this->x]->name[0] == board[i][j]->name[0])
+					if (board[i][j] == NULL || name[0] == board[i][j]->name[0])
 						continue;
 
 					//This is to check if there is more than one piece checking the king
@@ -196,6 +199,9 @@ public:
 			break;
 
 		case 'K':
+			if (abs(y - position[1]) > 1 || abs(x - position[0]) > 1)
+				break;
+
 			if ((abs(y - position[1]) == 1 || abs(x - position[0]) == 1) && (board[position[1]][position[0]] == NULL || board[position[1]][position[0]]->name[0] != name[0]))
 				return true;
 
@@ -650,6 +656,7 @@ void vsAIGame()
 			if ((*iterPiecesB)->name[1] == 'K' && (*iterPiecesB)->Checkmate())
 			{
 				cout << "The enemy king has been checkmated" << endl;
+				displayBoard();
 				WinorLose = 1;
 			}
 			
@@ -694,7 +701,7 @@ void vsAIGame()
 
 			//B.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
 			//board[p1[1] - '1'][p1[0] - 'a']->move(p2);
-			system("CLS");
+			//system("CLS");
 			break;
 		}
 
