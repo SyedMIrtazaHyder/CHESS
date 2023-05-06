@@ -384,6 +384,11 @@ public:
 		return pieces;
 	}
 
+	stack<Pieces*>& getMovedPieces()
+	{
+		return movedPieces;
+	}
+
 	void pushPiece(Pieces* pushed) {
 		if (counter < 3)
 		{
@@ -493,7 +498,7 @@ int* decodePosition(string pos) {
 }
 
 //Input validation function
-bool isvalid(bool playerColour, string space)
+bool isvalid(bool isWhite, string space)
 {
 	if (board[space[1] - '1'][space[0] - 'a'] == NULL)
 	{
@@ -501,7 +506,7 @@ bool isvalid(bool playerColour, string space)
 		return false;
 	}
 
-	else if (board[space[1] - '1'][space[0] - 'a']->name[0] == 'w' && !playerColour)
+	else if ((board[space[1] - '1'][space[0] - 'a']->name[0] == 'w' && !isWhite) || (board[space[1] - '1'][space[0] - 'a']->name[0] == 'b' && isWhite))
 	{
 		cout << "You cannot control those pieces." << endl;
 		return false;
@@ -531,14 +536,162 @@ bool validPosition(string Space)
 
 }
 
-bool PlayerTurn(Player &Playing, Player &Enemy)
+//This boolean will decide whether to skip the next player's turn or not.
+bool PlayerTurn(Player &A, Player &B, bool isWhite, int &WinorLose)
 {
-	return false;
+	string p1, p2;
+	bool CheckRollback = false;
+	displayBoard();
+
+	cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
+	do
+	{
+		cin >> p1;
+	} while (p1 != "1" && p1 != "2" && p1 != "3");
+
+	if (p1 == "3")
+	{
+		if (isWhite)
+			WinorLose = 2;
+		else
+			WinorLose = 1;
+		return 1;
+	}
+		
+
+	if (p1 == "2")
+	{
+		system("CLS");
+		if (A.getMovedPieces().size() > 2 && B.getMovedPieces().size() > 2)
+		{
+			//Undo because of Player
+			A.undo();
+			B.undo();
+
+
+			//Undo for the Opponent
+			A.undo();
+			B.undo();
+		}
+
+		else
+			cout <<"No more Undo's Possible" << endl << endl;
+
+		return 1;
+	}
+
+	//Loop for the player
+	while (true)
+	{
+		//User's turn
+		do
+		{
+			cout << "Enter current position of piece: ";
+			cin >> p1;
+
+		} while (!validPosition(p1));
+
+		//This checks if the piece chosen is actually the player's
+		if (!isvalid(isWhite, p1))
+			continue;
+
+		do
+		{
+			cout << "Enter move: ";
+			cin >> p2;
+
+		} while (!validPosition(p2));
+
+
+		if (board[p1[1] - '1'][p1[0] - 'a']->validMoves(p2, board[p1[1] - '1'][p1[0] - 'a']->name))
+		{
+			//Pushing the enemy piece onto the Undo Stack
+			if (board[p2[1] - '1'][p2[0] - 'a'] != NULL)
+				B.Captured(board[p2[1] - '1'][p2[0] - 'a']);
+
+			//En Passant requires this in order to work. Must be repeated for the opponent
+			//In case they use en passant as well
+			else if (Enpassant && isWhite)
+				B.Captured(board[p2[1] - '1' - 1][p2[0] - 'a']);
+			else if (Enpassant)
+				B.Captured(board[p2[1] - '1' + 1][p2[0] - 'a']);
+			//Adding in NULL to make sure Undo's work properly
+			else
+				B.pushPiece(NULL);
+			Enpassant = false;
+
+
+			//Pushing previous Piece and moving it
+			A.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
+
+			//Moving the piece on the board
+			board[p1[1] - '1'][p1[0] - 'a']->move(p2);
+
+			//Promotion in case it happens
+			A.Promotion(board[p2[1] - '1'][p2[0] - 'a']);
+		}
+		else
+		{
+			cout << "Invalid Move" << endl;
+			continue;
+		}
+
+		//Finding the King in the Player's pieces
+		typename list<Pieces*>::iterator iterPieces = A.getPieces().begin();
+		for (int i = 0; i < A.getPieces().size(); i++)
+		{
+			if ((*iterPieces)->name[1] == 'K')
+			{
+				//if it's checked, undoing the player's last move
+				if ((*iterPieces)->isChecked())
+				{
+					A.undo();
+					B.undo();
+
+					CheckRollback = true;
+					cout << endl << "Your King is Checked. You cannot make that move." << endl << endl;
+				}
+				else
+					break;
+			}
+
+			iterPieces++;
+		}
+
+		if (CheckRollback == true)
+		{
+			CheckRollback = false;
+			continue;
+		}
+
+		system("CLS");
+		break;
+	}
+
+	//Checking if the Enemy king is Checkmated
+	typename list<Pieces*>::iterator iterPiecesB = B.getPieces().begin();
+	for (int i = 0; i < B.getPieces().size(); i++)
+	{
+		if ((*iterPiecesB)->name[1] == 'K' && (*iterPiecesB)->Checkmate())
+		{
+			cout << "The enemy king has been checkmated" << endl;
+			displayBoard();
+
+			if (isWhite)
+				WinorLose = 1;
+			else
+				WinorLose = 2;
+		}
+
+		iterPiecesB++;
+	}
+
+	return 0;
 }
 
-void AITurn()
+bool AITurn()
 {
-	
+	return false;
 }
 
 
@@ -721,15 +874,45 @@ void vsPlayerGame()
 	system("CLS");
 	bool isWhite = rand() % 2;
 	bool CheckRollback = false;
+	bool skipPlayer = false;
+	int WinorLose = 0;
+
+	Player A(isWhite);
+	Player B(!isWhite);
 
 	if (isWhite)
 		cout << "Player 1 will Control White and Player 2 will Control Black." << endl;
 	else
 		cout << "Player 1 will Control Black and Player 2 will Control White." << endl;
 
-	Player A(isWhite);
-	Player B(!isWhite);
 
+	//Main gameplay loop is here
+	do {
+
+		if (!skipPlayer)
+		{
+			cout << "Player 1 Turn: " << endl;
+			skipPlayer = PlayerTurn(A, B, isWhite, WinorLose);
+		}
+		else
+			skipPlayer = false;
+
+		if (!skipPlayer)
+		{
+			cout << "Player 2 Turn: " << endl;
+			skipPlayer = PlayerTurn(B, A, !isWhite, WinorLose);
+		}
+		else
+			skipPlayer = false;
+
+	} while (WinorLose == 0);
+
+	if (WinorLose == 1)
+		cout << endl << "The White Player has won the game!";
+	else
+		cout << endl << "The Black Player has won the game!";
+
+	_getch();
 }
 
 int main() {
