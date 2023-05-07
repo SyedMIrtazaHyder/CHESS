@@ -303,33 +303,51 @@ public:
 
 class Pawn :public Pieces {
 public:
-	Pawn(string pos, string color) :Pieces(pos, color + "P", 1) {}
+	Pawn(string pos, string color) :Pieces(pos, color + "P", 10) {}
+
+	doublePush() {
+		if (name[0] == 'W')
+			y += 2;
+		else
+			y -= 2;
+	}
+
+	enPassant() {
+
+	}
+
+	singlePush() {
+		if (name[0] == 'W')
+			y += 1;
+		else
+			y -= 1;
+	}
 };
 
 class King :public Pieces {
 public:
-	King(string pos, string color) :Pieces(pos, color + "K", 1) {}
+	King(string pos, string color) :Pieces(pos, color + "K", 999) {}
 	
 };
 
 class Queen :public Pieces {
 public:
-	Queen(string pos, string color) :Pieces(pos, color + "Q", 1) {}
+	Queen(string pos, string color) :Pieces(pos, color + "Q", 90) {}
 };
 
 class Knight :public Pieces {
 public:
-	Knight(string pos, string color) :Pieces(pos, color + "N", 1) {}
+	Knight(string pos, string color) :Pieces(pos, color + "N", 30) {}
 };
 
 class Bishop :public Pieces {
 public:
-	Bishop(string pos, string color) :Pieces(pos, color + "B", 1) {}
+	Bishop(string pos, string color) :Pieces(pos, color + "B", 30) {}
 };
 
 class Rook :public Pieces {
 public:
-	Rook(string pos, string color) :Pieces(pos, color + "R", 1) {}
+	Rook(string pos, string color) :Pieces(pos, color + "R", 50) {}
 };
 
 //Module 2-Player
@@ -689,9 +707,10 @@ bool PlayerTurn(Player &A, Player &B, bool isWhite, int &WinorLose)
 	return 0;
 }
 
-bool AITurn()
+string AITurn(Player AI)
 {
-	return false;
+	//making it do a random move
+
 }
 
 
