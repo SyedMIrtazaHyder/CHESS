@@ -2,6 +2,7 @@
 #include <list>
 #include <stack>
 #include <vector>
+
 #include <math.h>
 #include <conio.h>
 
@@ -16,12 +17,14 @@ bool Enpassant = false;
 Pieces* getEnPassant = NULL;
 vector< vector<Pieces*> > board(8, vector<Pieces*>(8, NULL));
 
+
 //Module 1-Pieces
 //Bug in EnPassant
 class Pieces {
 public:
 	int x, y, value;
 	string name;
+
 	stack<int> prevX;
 	stack<int> prevY;
 	list<string> possibleMoves;//listing all the possible moves possible by a certain piece
@@ -55,7 +58,7 @@ public:
 		}
 
 		return false;
-	}
+
 
 	//Possible for extremely small fringe cases to not be checkmated.
 	//Testing required.
