@@ -12,6 +12,7 @@ int* decodePosition(string pos);
 bool validPosition(string Space);
 void displayBoard();
 //call capture logic when a piece is captured like we did for enpassant
+//all directions based on black side
 
 bool Enpassant = false;
 Pieces* getEnPassant = NULL;
@@ -209,11 +210,12 @@ public:
 			break;
 
 		case 'K':
-			if (abs(y - position[1]) > 1 || abs(x - position[0]) > 1)
+			/*if (abs(y - position[1]) > 1 || abs(x - position[0]) > 1)
 				break;
 
 			if ((abs(y - position[1]) == 1 || abs(x - position[0]) == 1) && (board[position[1]][position[0]] == NULL || board[position[1]][position[0]]->name[0] != name[0]))
-				return true;
+				return true;*/
+			return true;
 
 			break;
 
@@ -407,9 +409,66 @@ class King :public Pieces {
 public:
 	King(string pos, string color) :Pieces(pos, color + "K", 999) {}
 	list<string> pseudoLegalMoves(string pos) {
-		list<string> o;
-		o.push_back("King");
-		return o;
+		possibleMoves.clear();
+		//N
+		if (y > 0 && (board[this->y - 1][this->x] == NULL || board[this->y - 1][this->x]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x, this->y - 1));
+		//S
+		if (y < 7 && (board[this->y + 1][this->x] == NULL || board[this->y + 1][this->x]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x, this->y + 1));
+		//E
+		if (x < 7 && (board[this->y][this->x + 1] == NULL || board[this->y][this->x + 1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x + 1, this->y));
+		//W
+		if (x > 0 && (board[this->y][this->x-1] == NULL || board[this->y][this->x-1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x - 1, this->y));
+		//NW
+		if (y > 0 && x > 0 && (board[this->y - 1][this->x - 1] == NULL || board[this->y - 1][this->x - 1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x-1, this->y - 1));
+		//SW
+		if (y < 7 && x > 0 && (board[this->y + 1][this->x-1] == NULL || board[this->y + 1][this->x-1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x - 1, this->y +1));
+		//SE
+		if (y < 7 && x < 7 && (board[this->y + 1][this->x + 1] == NULL || board[this->y + 1][this->x + 1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x + 1, this->y + 1));
+		//NE
+		if (y > 0 && x < 7 && (board[this->y - 1][this->x + 1] == NULL || board[this->y - 1][this->x + 1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x + 1, this->y - 1));
+
+		//checking for castling
+		// add color of rook as well just to prevent any bugs in custom positions
+		//King side castling hence west
+		if (board[this->y][0] != NULL &&//checking if piece in that location exists
+			board[this->y][0]->name[1] == 'R' && board[this->y][0]->prevX.size() == 1 &&//the square has same coloured unmoved Rook
+			board[this->y][1] == NULL && board[this->y][2] == NULL &&//empty spaces between left rook and king
+			this->prevX.size() == 1 && this->x == 3)//king has not moved from its own position
+		{
+			possibleMoves.push_back(toMove(this->x - 2, this->y));//Castling possible, write castling logic below
+			if (pos == *possibleMoves.rbegin())//hence user wants to castle
+			{
+				//this->x -= 2;
+				//moving and updating rooks position
+				board[this->y][0]->move(toMove(2, this->y));
+				//>>>>Add some undo logic here<<<<
+			}
+		}
+
+		//Queen side castling hence east
+		if (board[this->y][7] != NULL &&//checking if piece in that location exists
+			board[this->y][7]->name[1] == 'R' && board[this->y][7]->prevX.size() == 1 &&//the square has same coloured unmoved Rook
+			board[this->y][6] == NULL && board[this->y][5] == NULL && board[this->y][4] == NULL &&//empty spaces between right rook and king
+			this->prevX.size() == 1 && this->x == 3)//king has not moved from its own position
+		{
+			possibleMoves.push_back(toMove(this->x + 2, this->y));//Castling possible, write castling logic below
+			if (pos == *possibleMoves.rbegin())//hence user wants to castle
+			{
+				//this->x += 2;
+				board[this->y][7]->move(toMove(4, this->y));
+				//>>>>Add some undo logic here<<<<
+			}
+		}
+
+		return possibleMoves;
 	}
 
 };
@@ -418,6 +477,37 @@ class Knight :public Pieces {
 public:
 	Knight(string pos, string color) :Pieces(pos, color + "N", 30) {}
 	list<string> pseudoLegalMoves(string pos) {
+		possibleMoves.clear();
+		//moving like an octopus smh
+		//--|
+		if (this->x + 2 < 8 && this->y + 1 < 8 && (board[this->y + 1][this->x + 2] == NULL || board[this->y + 1][this->x + 2]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x + 2, this-> y + 1));
+
+		if (this->x + 2 < 8 && this->y - 1 >= 0 && (board[this->y - 1][this->x + 2] == NULL || board[this->y - 1][this->x + 2]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x + 2, this->y - 1));
+		
+		//|--
+		if (this->x - 2 >= 0 && this->y + 1 < 8 && (board[this->y + 1][this->x - 2] == NULL || board[this->y + 1][this->x - 2]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x - 2, this->y + 1));
+		if (this->x - 2 >=0 && this->y -1 >= 0 && (board[this->y - 1][this->x - 2] == NULL || board[this->y - 1][this->x - 2]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x - 2, this->y - 1));
+
+		// |
+		//-|
+		// |
+		if (this->x + 1 < 8 && this->y + 2 < 8 && (board[this->y + 2][this->x + 1] == NULL || board[this->y + 2][this->x + 1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x + 1, this->y + 2));
+		if (this->x + 1 < 8 && this->y - 2 >= 0 && (board[this->y - 2][this->x + 1] == NULL || board[this->y - 2][this->x + 1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x + 1, this->y - 2));
+
+		//|
+		//|-
+		//|
+		if (this->x - 1 >=0 && this->y + 2 < 8 && (board[this->y + 2][this->x - 1] == NULL || board[this->y + 2][this->x -1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x - 1, this->y + 2));
+		if (this->x - 1 >=0 && this->y - 2 >= 0 && (board[this->y - 2][this->x - 1] == NULL || board[this->y - 2][this->x - 1]->name[0] != this->name[0]))
+			possibleMoves.push_back(toMove(this->x - 1, this->y - 2));
+
 		return possibleMoves;
 	}
 };
@@ -549,6 +639,7 @@ public:
 	Queen(string pos, string color) :Pieces(pos, color + "Q", 90) {}
 
 	list<string> pseudoLegalMoves(string pos) {
+		possibleMoves.clear();
 		Bishop bisMoves = *((Bishop* )this );
 		Rook rookMoves = *((Rook*)this);
 
@@ -610,14 +701,18 @@ public:
 			pieces.push_back(new Rook("h8", "b"));
 		}*/
 
+		//>>>>Add pieces here<<<<
+		pieces.push_back(new Pawn("c7", "b"));
+		pieces.push_back(new Pawn("d7", "b"));
 		pieces.push_back(new Pawn("e7", "b"));
-		pieces.push_back(new Pawn("b2", "w"));
-		pieces.push_back(new Pawn("c4", "b"));
-		pieces.push_back(new Pawn("d5", "w"));
-		pieces.push_back(new Rook("a1", "w"));
-		pieces.push_back(new Bishop("c3", "b"));
+		//pieces.push_back(new Pawn("e8", "b"));
+		//pieces.push_back(new Rook("a8", "b"));
+		pieces.push_back(new Rook("h8", "b"));
 		pieces.push_back(new Queen("e5", "w"));
-		pieces.push_back(new Queen("g3", "b"));
+		pieces.push_back(new Knight("e4", "w"));
+		pieces.push_back(new Knight("d5", "b"));
+		pieces.push_back(new King("d8", "b"));
+
 	}
 
 	list<Pieces*>& getPieces() {
@@ -638,8 +733,12 @@ public:
 	}
 
 	void undo() {
-		if (movedPieces.top() == NULL && movedPieces.size() > 1)
+		if (movedPieces.top() == NULL && !movedPieces.empty())
+		{
 			movedPieces.pop();
+			//>>>>problem when returning the latest of the captured pieces<<<,
+			//movedPieces.pop();//popping twice to retrive the captured piece as well
+		}
 
 		else if (movedPieces.size() > 1 && counter > 0)
 		{
