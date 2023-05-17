@@ -2,12 +2,14 @@
 #include <list>
 #include <stack>
 #include <vector>
-#include<algorithm>
+#include <algorithm>
 #include <math.h>
 #include <conio.h>
+#include <unordered_set>
 
 using namespace std;
 class Pieces;
+class Player;
 
 int* decodePosition(string pos);
 bool validPosition(string Space);
@@ -20,6 +22,7 @@ bool Enpassant = false;
 Pieces* getEnPassant = NULL;
 Pieces* checkEnPassant;
 vector< vector<Pieces*> > board(8, vector<Pieces*>(8, NULL));
+string kingToMove;//0 = white, 1 = black
 
 //Module 1-Pieces
 class Pieces {
@@ -28,8 +31,8 @@ public:
 	string name;
 	stack<int> prevX;
 	stack<int> prevY;
-	list<string> possibleMoves;//listing all the possible moves possible by a certain piece
-	list<string> captureMoves;//lists all the possible pieces current piece can capture
+	unordered_set<string> possibleMoves;//listing all the possible moves possible by a certain piece
+	unordered_set<string> captureMoves;//lists all the possible pieces current piece can capture
 	Pieces() :x(0), y(0), value(0), name("NULL") {}
 	Pieces(string pos, string name, int value) :x(pos[0] - 'a'), y(pos[1] - '1'), value(value), name(name) {
 		board[y][x] = this;
@@ -219,34 +222,34 @@ public:
 		prevY.pop();
 	}
 
-	virtual list<string> pseudoLegalMoves(string pos) = 0;
+	virtual unordered_set<string> pseudoLegalMoves(string pos) = 0;
 
 };
 
 class Pawn :public Pieces {
 public:
 	Pawn(string pos, string color) :Pieces(pos, color + "P", 10) {}
-	//list<string> possibleMoves;//will move this into pieces later as a set, as two pieces can never have the same start pos but can have same end pos
+	//list<string> possibleMoves;//will move this into pieces later as a unordered_set, as two pieces can never have the same start pos but can have same end pos
 
-	list<string> pseudoLegalMoves(string move) {//generating a rough lookup-table
+	unordered_set<string> pseudoLegalMoves(string move) {//generating a rough lookup-table
 		possibleMoves.clear();
 		//for white
 		if (name[0] == 'w') {
 			if (board[y + 1][x - 1] != NULL && board[y + 1][x - 1]->name[0] == 'b')//capture left
 			{
-				possibleMoves.push_back(toMove(x - 1, y + 1));
-				captureMoves.push_back(toMove(x - 1, y + 1));
+				possibleMoves.insert(toMove(x - 1, y + 1));
+				captureMoves.insert(toMove(x - 1, y + 1));
 			}
 
 			if (board[y + 1][x + 1] != NULL && board[y + 1][x + 1]->name[0] == 'b')//capture right
 			{
-				possibleMoves.push_back(toMove(x + 1, y + 1));
-				captureMoves.push_back(toMove(x + 1, y + 1));
+				possibleMoves.insert(toMove(x + 1, y + 1));
+				captureMoves.insert(toMove(x + 1, y + 1));
 			}
 
 			if (board[y + 2][x] == NULL && this->y == 1)//double push so chance to enpassant
 			{
-				possibleMoves.push_back(toMove(x, y + 2));
+				possibleMoves.insert(toMove(x, y + 2));
 				if (toMove(x, y + 2) == move && (
 						(board[y + 2][x - 1] != NULL && board[y + 2][x - 1]->name == "bP") ||
 						(board[y + 2][x + 1] != NULL && board[y + 2][x + 1]->name == "bP")
@@ -256,7 +259,7 @@ public:
 			}
 
 			if (board[y + 1][x] == NULL)//single push l8r with promotion
-				possibleMoves.push_back(toMove(x, y + 1));//check for promotion later
+				possibleMoves.insert(toMove(x, y + 1));//check for promotion later
 
 			if (y == 4) {//enPassant baybee
 				Pieces* west = board[y][x - 1];
@@ -264,13 +267,13 @@ public:
 
 				if (west != NULL && west == getEnPassant)
 				{
-					possibleMoves.push_back(toMove(x - 1, y + 1));
-					captureMoves.push_back(toMove(x - 1, y));
+					possibleMoves.insert(toMove(x - 1, y + 1));
+					captureMoves.insert(toMove(x - 1, y));
 				}
 				if (east != NULL && east == getEnPassant)
 				{
-					possibleMoves.push_back(toMove(x + 1, y + 1));
-					captureMoves.push_back(toMove(x + 1, y));
+					possibleMoves.insert(toMove(x + 1, y + 1));
+					captureMoves.insert(toMove(x + 1, y));
 				}
 
 			}
@@ -278,18 +281,18 @@ public:
 		else {
 			if (board[y - 1][x - 1] != NULL && board[y + 1][x - 1]->name[0] == 'w')//capture left
 			{
-				possibleMoves.push_back(toMove(x - 1, y - 1));
-				captureMoves.push_back(toMove(x - 1, y - 1));
+				possibleMoves.insert(toMove(x - 1, y - 1));
+				captureMoves.insert(toMove(x - 1, y - 1));
 			}
 
 			if (board[y - 1][x + 1] != NULL && board[y + 1][x - 1]->name[0] == 'w')//capture right
 			{
-				possibleMoves.push_back(toMove(x + 1, y - 1));
-				captureMoves.push_back(toMove(x + 1, y - 1));
+				possibleMoves.insert(toMove(x + 1, y - 1));
+				captureMoves.insert(toMove(x + 1, y - 1));
 			}
 
 			if (board[y - 2][x] == NULL && this->y == 6) {//Double push
-				possibleMoves.push_back(toMove(x, y - 2));
+				possibleMoves.insert(toMove(x, y - 2));
 				if (
 					toMove(x, y - 2) == move && (
 						(board[y - 2][x - 1] != NULL && board[y - 2][x - 1]->name == "wP") ||
@@ -300,7 +303,7 @@ public:
 			}
 
 			if (board[y - 1][x] == NULL)//single push
-				possibleMoves.push_back(toMove(x, y - 1));//promotion logic exists so will make AI most likely only choose to promote queen ???
+				possibleMoves.insert(toMove(x, y - 1));//promotion logic exists so will make AI most likely only choose to promote queen ???
 
 			if (y == 3) {//lmao get enPassanted 
 				Pieces* west = board[y][x - 1];
@@ -308,13 +311,13 @@ public:
 
 				if (west != NULL && west == getEnPassant)
 				{
-					possibleMoves.push_back(toMove(x - 1, y - 1));
-					captureMoves.push_back(toMove(x - 1, y));
+					possibleMoves.insert(toMove(x - 1, y - 1));
+					captureMoves.insert(toMove(x - 1, y));
 				}
 				if (east != NULL && east == getEnPassant)
 				{
-					possibleMoves.push_back(toMove(x + 1, y - 1));
-					captureMoves.push_back(toMove(x + 1, y));
+					possibleMoves.insert(toMove(x + 1, y - 1));
+					captureMoves.insert(toMove(x + 1, y));
 				}
 
 			}
@@ -326,36 +329,37 @@ public:
 class Knight :public Pieces {
 public:
 	Knight(string pos, string color) :Pieces(pos, color + "N", 30) {}
-	list<string> pseudoLegalMoves(string pos) {
+
+	unordered_set<string> pseudoLegalMoves(string pos) {
 		possibleMoves.clear();
 		//moving like an octopus smh
 		//--|
 		if (this->x + 2 < 8 && this->y + 1 < 8 && (board[this->y + 1][this->x + 2] == NULL || board[this->y + 1][this->x + 2]->name[0] != this->name[0]))
 		{
-			possibleMoves.push_back(toMove(this->x + 2, this->y + 1));
+			possibleMoves.insert(toMove(this->x + 2, this->y + 1));
 			if (board[this->y + 1][this->x + 2] != NULL && board[this->y + 1][this->x + 2]->name[0] != this->name[0])
-				captureMoves.push_back(toMove(this->x + 2, this->y + 1));
+				captureMoves.insert(toMove(this->x + 2, this->y + 1));
 		}
 		if (this->x + 2 < 8 && this->y - 1 >= 0 && (board[this->y - 1][this->x + 2] == NULL || board[this->y - 1][this->x + 2]->name[0] != this->name[0]))
 		{
-			possibleMoves.push_back(toMove(this->x + 2, this->y - 1));
+			possibleMoves.insert(toMove(this->x + 2, this->y - 1));
 			if (board[this->y - 1][this->x + 2] != NULL && board[this->y - 1][this->x + 2]->name[0] != this->name[0])
-				captureMoves.push_back(toMove(this->x + 2, this->y - 1));
+				captureMoves.insert(toMove(this->x + 2, this->y - 1));
 
 		}
 
 		//|--
 		if (this->x - 2 >= 0 && this->y + 1 < 8 && (board[this->y + 1][this->x - 2] == NULL || board[this->y + 1][this->x - 2]->name[0] != this->name[0]))
 		{
-			possibleMoves.push_back(toMove(this->x - 2, this->y + 1));
+			possibleMoves.insert(toMove(this->x - 2, this->y + 1));
 			if (board[this->y + 1][this->x - 2] != NULL && board[this->y + 1][this->x - 2]->name[0] != this->name[0])
-				captureMoves.push_back(toMove(this->x - 2, this->y + 1));
+				captureMoves.insert(toMove(this->x - 2, this->y + 1));
 		}
 		if (this->x - 2 >= 0 && this->y - 1 >= 0 && (board[this->y - 1][this->x - 2] == NULL || board[this->y - 1][this->x - 2]->name[0] != this->name[0]))
 		{
-			possibleMoves.push_back(toMove(this->x - 2, this->y - 1));
+			possibleMoves.insert(toMove(this->x - 2, this->y - 1));
 			if (board[this->y - 1][this->x - 2] != NULL && board[this->y - 1][this->x - 2]->name[0] != this->name[0])
-				captureMoves.push_back(toMove(this->x - 2, this->y - 1));
+				captureMoves.insert(toMove(this->x - 2, this->y - 1));
 		}
 
 		// |
@@ -363,15 +367,15 @@ public:
 		// |
 		if (this->x + 1 < 8 && this->y + 2 < 8 && (board[this->y + 2][this->x + 1] == NULL || board[this->y + 2][this->x + 1]->name[0] != this->name[0]))
 		{
-			possibleMoves.push_back(toMove(this->x + 1, this->y + 2));
+			possibleMoves.insert(toMove(this->x + 1, this->y + 2));
 			if (board[this->y + 2][this->x + 1] != NULL && board[this->y + 2][this->x + 1]->name[0] != this->name[0])
-				captureMoves.push_back(toMove(this->x + 1, this->y + 2));
+				captureMoves.insert(toMove(this->x + 1, this->y + 2));
 		}
 		if (this->x + 1 < 8 && this->y - 2 >= 0 && (board[this->y - 2][this->x + 1] == NULL || board[this->y - 2][this->x + 1]->name[0] != this->name[0]))
 		{
-			possibleMoves.push_back(toMove(this->x + 1, this->y - 2));
+			possibleMoves.insert(toMove(this->x + 1, this->y - 2));
 			if (board[this->y - 2][this->x + 1] != NULL && board[this->y - 2][this->x + 1]->name[0] != this->name[0])
-				captureMoves.push_back(toMove(this->x + 1, this->y - 2));
+				captureMoves.insert(toMove(this->x + 1, this->y - 2));
 		}
 
 		//|
@@ -379,15 +383,15 @@ public:
 		//|
 		if (this->x - 1 >= 0 && this->y + 2 < 8 && (board[this->y + 2][this->x - 1] == NULL || board[this->y + 2][this->x - 1]->name[0] != this->name[0]))
 		{
-			possibleMoves.push_back(toMove(this->x - 1, this->y + 2));
+			possibleMoves.insert(toMove(this->x - 1, this->y + 2));
 			if (board[this->y + 2][this->x - 1] != NULL && board[this->y + 2][this->x - 1]->name[0] != this->name[0])
-				captureMoves.push_back(toMove(this->x - 1, this->y + 2));
+				captureMoves.insert(toMove(this->x - 1, this->y + 2));
 		}
 		if (this->x - 1 >= 0 && this->y - 2 >= 0 && (board[this->y - 2][this->x - 1] == NULL || board[this->y - 2][this->x - 1]->name[0] != this->name[0]))
 		{
-			possibleMoves.push_back(toMove(this->x - 1, this->y - 2));
+			possibleMoves.insert(toMove(this->x - 1, this->y - 2));
 			if (board[this->y - 2][this->x - 1] != NULL && board[this->y - 2][this->x - 1]->name[0] != this->name[0])
-				captureMoves.push_back(toMove(this->x - 1, this->y - 2));
+				captureMoves.insert(toMove(this->x - 1, this->y - 2));
 		}
 
 		return possibleMoves;
@@ -402,7 +406,7 @@ public:
 		cout << "Imma Bishop";
 	}
 
-	list<string> pseudoLegalMoves(string pos) {
+	unordered_set<string> pseudoLegalMoves(string pos) {
 		int i = 0; int j = 0;
 		possibleMoves.clear();
 		for (i = this->y - 1, j = this->x - 1; i >= 0 && j >= 0; i--, j--) {//sw
@@ -410,12 +414,12 @@ public:
 			{
 				if (board[i][j]->name[0] != this->name[0])
 				{
-					possibleMoves.push_back(toMove(j, i));//adding the possible capture/attacked piece
-					captureMoves.push_back(toMove(j, i));//adding the possible capture/attacked piece
+					possibleMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
+					captureMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
 				}
 				break;
 			}
-			possibleMoves.push_back(toMove(j, i));
+			possibleMoves.insert(toMove(j, i));
 		}
 
 		for (i = this->y - 1, j = this->x + 1; i >= 0 && j < 8; i--, j++)//se
@@ -424,12 +428,12 @@ public:
 			{
 				if (board[i][j]->name[0] != this->name[0])
 				{
-					possibleMoves.push_back(toMove(j, i));//adding the possible capture/attacked piece
-					captureMoves.push_back(toMove(j, i));//adding the possible capture/attacked piece
+					possibleMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
+					captureMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
 				}
 				break;
 			}
-			possibleMoves.push_back(toMove(j, i));
+			possibleMoves.insert(toMove(j, i));
 
 		}
 
@@ -439,12 +443,12 @@ public:
 			{
 				if (board[i][j]->name[0] != this->name[0])
 				{
-					possibleMoves.push_back(toMove(j, i));//adding the possible capture/attacked piece
-					captureMoves.push_back(toMove(j, i));//adding the possible capture/attacked piece
+					possibleMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
+					captureMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
 				}
 				break;
 			}
-			possibleMoves.push_back(toMove(j, i));
+			possibleMoves.insert(toMove(j, i));
 
 		}
 
@@ -454,12 +458,12 @@ public:
 			{
 				if (board[i][j]->name[0] != this->name[0])
 				{
-					possibleMoves.push_back(toMove(j, i));//adding the possible capture/attacked piece
-					captureMoves.push_back(toMove(j, i));//adding the possible capture/attacked piece
+					possibleMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
+					captureMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
 				}
 				break;
 			}
-			possibleMoves.push_back(toMove(j, i));
+			possibleMoves.insert(toMove(j, i));
 
 		}
 
@@ -476,7 +480,7 @@ public:
 		cout << "Imma Rookzzz";
 	}
 
-	list<string> pseudoLegalMoves(string pos) {
+	unordered_set<string> pseudoLegalMoves(string pos) {
 		possibleMoves.clear();
 		for (int i = this->y - 1; i >= 0; i--)//north
 		{
@@ -484,12 +488,12 @@ public:
 			{
 				if (board[i][this->x]->name[0] != this->name[0])
 				{
-					possibleMoves.push_back(toMove(this->x, i));//adding the possible capture/attacked piece
-					captureMoves.push_back(toMove(this->x, i));//adding the possible capture/attacked piece
+					possibleMoves.insert(toMove(this->x, i));//adding the possible capture/attacked piece
+					captureMoves.insert(toMove(this->x, i));//adding the possible capture/attacked piece
 				}
 				break;
 			}
-			possibleMoves.push_back(toMove(this->x, i));
+			possibleMoves.insert(toMove(this->x, i));
 		}
 
 		for (int i = this->y + 1; i < 8; i++)//south
@@ -498,12 +502,12 @@ public:
 			{
 				if (board[i][this->x]->name[0] != this->name[0])
 				{
-					possibleMoves.push_back(toMove(this->x, i));//adding the possible capture/attacked piece
-					captureMoves.push_back(toMove(this->x, i));//adding the possible capture/attacked piece
+					possibleMoves.insert(toMove(this->x, i));//adding the possible capture/attacked piece
+					captureMoves.insert(toMove(this->x, i));//adding the possible capture/attacked piece
 				}
 				break;
 			}
-			possibleMoves.push_back(toMove(this->x, i));
+			possibleMoves.insert(toMove(this->x, i));
 		}
 
 
@@ -513,12 +517,12 @@ public:
 			{
 				if (board[this->y][j]->name[0] != this->name[0])
 				{
-					possibleMoves.push_back(toMove(j, this->y));
-					captureMoves.push_back(toMove(j, this->y));//adding the possible capture/attacked piece
+					possibleMoves.insert(toMove(j, this->y));
+					captureMoves.insert(toMove(j, this->y));//adding the possible capture/attacked piece
 				}
 				break;
 			}
-			possibleMoves.push_back(toMove(j, this->y));
+			possibleMoves.insert(toMove(j, this->y));
 		}
 
 		for (int j = this->x + 1; j < 8; j++)//east
@@ -527,13 +531,13 @@ public:
 			{
 				if (board[this->y][j]->name[0] != this->name[0])
 				{
-					possibleMoves.push_back(toMove(j, this->y));
-					captureMoves.push_back(toMove(j, this->y));//adding the possible capture/attacked piece
+					possibleMoves.insert(toMove(j, this->y));
+					captureMoves.insert(toMove(j, this->y));//adding the possible capture/attacked piece
 				}
 				break;
 			}
 
-			possibleMoves.push_back(toMove(j, this->y));
+			possibleMoves.insert(toMove(j, this->y));
 		}
 
 		return possibleMoves;
@@ -544,32 +548,36 @@ class Queen :public Pieces {
 public:
 	Queen(string pos, string color) :Pieces(pos, color + "Q", 90) {}
 
-	list<string> pseudoLegalMoves(string pos) {
+	unordered_set<string> pseudoLegalMoves(string pos) {
 		possibleMoves.clear();
 		Bishop bisMoves = *((Bishop*)this);
 		Rook rookMoves = *((Rook*)this);
 
-		list<string> diagonals = bisMoves.pseudoLegalMoves(pos);//downcasting piece as bishop and storing its possible moves
+		unordered_set<string> diagonals = bisMoves.pseudoLegalMoves(pos);//downcasting piece as bishop and storing its possible moves
 		possibleMoves = rookMoves.pseudoLegalMoves(pos);//downcasting piece as rook and storing its possible moves
-		list<string> diagonalCapture = bisMoves.captureMoves;
+		unordered_set<string> diagonalCapture = bisMoves.captureMoves;
 		captureMoves = rookMoves.captureMoves;
 
 		//both above functions clear the possibleMoves list by default so hence need to save in seperate variables
 
 		for (string potentialPos : diagonals)
-			possibleMoves.push_back(potentialPos);
-		for (string potentiakCapture : diagonalCapture)
-			possibleMoves.push_back(potentiakCapture);
+			possibleMoves.insert(potentialPos);
+		for (string potentialCapture : diagonalCapture)
+			captureMoves.insert(potentialCapture);
 		return possibleMoves;
 	}
 };
 
 class King :public Pieces {
+	Player* opponent;
 public:
 	list<string> checks;
 	King(string pos, string color) :Pieces(pos, color + "K", 999) {}
 
+	void setOpponent(Player& opp);
+
 	bool isChecked() {//logic for checking if piece checked
+		checks.clear();
 		Rook LinearThreats = *((Rook*)this);
 		Bishop DiagonalThreats = *((Bishop*)this);
 		Knight LThreats = *((Knight*)this);
@@ -615,38 +623,42 @@ public:
 				checks.push_back(threat);
 		}
 
+		for (string threat : checks) {
+			cout << threat << " ";
+		}
+		cout << endl;
 		if (checks.empty())
 			return false;
 		return true;
 
 	}
 
-	list<string> pseudoLegalMoves(string pos) {
+	unordered_set<string> pseudoLegalMoves(string pos){
 		possibleMoves.clear();
 		//N
 		if (y > 0 && (board[this->y - 1][this->x] == NULL || board[this->y - 1][this->x]->name[0] != this->name[0]))
-			possibleMoves.push_back(toMove(this->x, this->y - 1));
+			possibleMoves.insert(toMove(this->x, this->y - 1));
 		//S
 		if (y < 7 && (board[this->y + 1][this->x] == NULL || board[this->y + 1][this->x]->name[0] != this->name[0]))
-			possibleMoves.push_back(toMove(this->x, this->y + 1));
+			possibleMoves.insert(toMove(this->x, this->y + 1));
 		//E
 		if (x < 7 && (board[this->y][this->x + 1] == NULL || board[this->y][this->x + 1]->name[0] != this->name[0]))
-			possibleMoves.push_back(toMove(this->x + 1, this->y));
+			possibleMoves.insert(toMove(this->x + 1, this->y));
 		//W
 		if (x > 0 && (board[this->y][this->x - 1] == NULL || board[this->y][this->x - 1]->name[0] != this->name[0]))
-			possibleMoves.push_back(toMove(this->x - 1, this->y));
+			possibleMoves.insert(toMove(this->x - 1, this->y));
 		//NW
 		if (y > 0 && x > 0 && (board[this->y - 1][this->x - 1] == NULL || board[this->y - 1][this->x - 1]->name[0] != this->name[0]))
-			possibleMoves.push_back(toMove(this->x - 1, this->y - 1));
+			possibleMoves.insert(toMove(this->x - 1, this->y - 1));
 		//SW
 		if (y < 7 && x > 0 && (board[this->y + 1][this->x - 1] == NULL || board[this->y + 1][this->x - 1]->name[0] != this->name[0]))
-			possibleMoves.push_back(toMove(this->x - 1, this->y + 1));
+			possibleMoves.insert(toMove(this->x - 1, this->y + 1));
 		//SE
 		if (y < 7 && x < 7 && (board[this->y + 1][this->x + 1] == NULL || board[this->y + 1][this->x + 1]->name[0] != this->name[0]))
-			possibleMoves.push_back(toMove(this->x + 1, this->y + 1));
+			possibleMoves.insert(toMove(this->x + 1, this->y + 1));
 		//NE
 		if (y > 0 && x < 7 && (board[this->y - 1][this->x + 1] == NULL || board[this->y - 1][this->x + 1]->name[0] != this->name[0]))
-			possibleMoves.push_back(toMove(this->x + 1, this->y - 1));
+			possibleMoves.insert(toMove(this->x + 1, this->y - 1));
 
 		//checking for castling
 		// add color of rook as well just to prevent any bugs in custom positions
@@ -656,8 +668,8 @@ public:
 			board[this->y][1] == NULL && board[this->y][2] == NULL &&//empty spaces between left rook and king
 			this->prevX.size() == 1 && this->x == 3)//king has not moved from its own position
 		{
-			possibleMoves.push_back(toMove(this->x - 2, this->y));//Castling possible, write castling logic below
-			if (pos == *possibleMoves.rbegin())//hence user wants to castle
+			possibleMoves.insert(toMove(this->x - 2, this->y));//Castling possible, write castling logic below
+			if (pos == *(possibleMoves.end()--))//hence user wants to castle
 			{
 				//this->x -= 2;
 				//moving and updating rooks position
@@ -672,8 +684,8 @@ public:
 			board[this->y][6] == NULL && board[this->y][5] == NULL && board[this->y][4] == NULL &&//empty spaces between right rook and king
 			this->prevX.size() == 1 && this->x == 3)//king has not moved from its own position
 		{
-			possibleMoves.push_back(toMove(this->x + 2, this->y));//Castling possible, write castling logic below
-			if (pos == *possibleMoves.rbegin())//hence user wants to castle
+			possibleMoves.insert(toMove(this->x + 2, this->y));//Castling possible, write castling logic below
+			if (pos == *(possibleMoves.end()--))//hence user wants to castle
 			{
 				//this->x += 2;
 				board[this->y][7]->move(toMove(4, this->y));
@@ -681,14 +693,17 @@ public:
 			}
 		}
 
+		if (kingToMove == this->name)
+			legalMoves();
 		return possibleMoves;
-	}
+	}//change return to legalMoves function
 
+	void legalMoves();
 };
 
 //Module 2-Player
 class Player {
-	bool isWhite;
+	bool isWhite, isChecked;
 	list<Pieces*> pieces;
 	//These are the pieces that have been moved/captured
 	stack<Pieces*> movedPieces;
@@ -696,11 +711,19 @@ class Player {
 	int counter;
 public:
 
+	void setCheck(bool check){
+		isChecked = check;
+	}
+
+	bool Checked() {
+		return isChecked;
+	}
+
 	King* getKing() {
 		return king;
 	}
 
-	Player(bool isWhite) : isWhite(isWhite) {
+	Player(bool isWhite) : isWhite(isWhite), isChecked(false) {
 		//The counter keeps track of how many undo's the player can do
 		counter = 0;
 
@@ -708,9 +731,14 @@ public:
 		movedPieces.push(NULL);
 		//color only needed for king assignment
 		if (isWhite)
+		{
 			king = new King("e1", "w");
+		}
 		else
+		{
 			king = new King("e8", "b");
+
+		}
 		pieces.push_back(king);
 		//placing pawns
 		/*for (char i = 'a'; i < 'i'; i++)
@@ -744,17 +772,20 @@ public:
 		}*/
 
 		//>>>>Add pieces here<<<<
-		pieces.push_back(new Pawn("e4", "b"));
+		/*pieces.push_back(new Pawn("e4", "b"));
 		pieces.push_back(new Pawn("b7", "b"));
 		pieces.push_back(new Pawn("f2", "w"));
-		pieces.push_back(new Pawn("c5", "w"));
+		pieces.push_back(new Pawn("c5", "w"));*/
 
-		pieces.push_back(new Rook("a1", "b"));
-		pieces.push_back(new Bishop("h8", "w"));
-		pieces.push_back(new Queen("e5", "w"));
-		pieces.push_back(new Knight("g6", "w"));
-		pieces.push_back(new Knight("d5", "b"));
-
+		if (isWhite) {
+			pieces.push_back(new Queen("c5", "w"));
+			pieces.push_back(new Knight("h6", "w"));
+			pieces.push_back(new Knight("b6", "w"));
+		}
+		else {
+			pieces.push_back(new Rook("f8", "b"));
+			pieces.push_back(new Bishop("h3", "b"));
+		}
 	}
 
 	list<Pieces*>& getPieces() {
@@ -799,6 +830,10 @@ public:
 		this->pushPiece(piece);
 	}
 
+	void LegalMovesInCheck() {
+		cout << "Legal Moves here";
+	}
+
 	void Promotion(Pieces* piece)
 	{
 		if (piece->name[1] == 'P' && (piece->y == 0 || piece->y == 7))
@@ -837,8 +872,25 @@ public:
 		}
 	}
 };
-//Module 3-Board
 
+//>>>>Forwading for the king functions<<<<
+void King::setOpponent(Player& opp) {
+	opponent = &opp;
+}
+
+void King::legalMoves() {
+	//possibleMoves = pseudoLegalMoves(toMove(this->x, this->y));
+	board[this->y][this->x] = NULL;//so the king is no longer in the "ray" of the attacking piece
+	for (Pieces* piece : opponent->getPieces()) {
+		piece->pseudoLegalMoves(toMove(piece->x, piece->y));//setting the pieces pseudoLegalMoves unordered set
+		for (string move : piece->possibleMoves)
+			if (possibleMoves.count(move) > 0)
+				possibleMoves.erase(possibleMoves.find(move));
+	}
+	board[this->y][this->x] = this;
+}
+
+//Module 3-Board
 void displayBoard() {
 	cout << "   ";
 	for (int i = 0; i < 8; i++)
@@ -918,12 +970,15 @@ bool validPosition(string Space)
 //This boolean will decide whether to skip the next player's turn or not.
 bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 {	//Player A is the current player
+	//need info on the opponent king so we can prevent their move generation
+	kingToMove = A.getKing()->name;
 	string p1, p2;
 	bool CheckRollback = false;
 	displayBoard();
 
 	if (A.getKing()->isChecked()) {
 		cout << "Check!!!\n";
+		A.LegalMovesInCheck();
 	}
 
 	cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
@@ -1086,7 +1141,6 @@ void AITurn(Player& AI)
 		}*/
 
 }
-
 
 void vsAIGame()
 {
@@ -1269,10 +1323,14 @@ void vsPlayerGame()
 	bool CheckRollback = false;
 	bool skipPlayer = false;
 	int WinorLose = 0;
-
+	//setting new players
 	Player A(isWhite);
 	Player B(!isWhite);
 
+	//>>>>Setting player's kings with the data they require<<<<
+	A.getKing()->setOpponent(B);
+	B.getKing()->setOpponent(A);//king needs opponent pieces potential moves
+	//>>><<<<
 	if (isWhite)
 		cout << "Player 1 will Control White and Player 2 will Control Black." << endl;
 	else
