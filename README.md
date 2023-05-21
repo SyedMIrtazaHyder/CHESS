@@ -2,8 +2,7 @@
 To add:</br>
 -Fix undo</br>
 -Condition for stalemate</br>
--Generation of Legal Moves from given pseudoLegal Moves (see if a move does not make king under check)</br>
--Checkmate condition</br>
+-Other comments in file, please try to implement them as code becomes more readable</br>
 
 Need to work on later:</br>
 -Make system using bitboard (having a single array of bits/peices to represent all the pieces)</br>
