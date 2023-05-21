@@ -6,6 +6,7 @@
 #include <math.h>
 #include <conio.h>
 #include <unordered_set>
+#include <map>
 
 using namespace std;
 class Pieces;
@@ -13,16 +14,25 @@ class Player;
 
 int* decodePosition(string pos);
 bool validPosition(string Space);
+string toMove(int, int);
 void displayBoard();
 //call capture logic when a piece is captured like we did for enpassant
 //all directions based on black side
 //make capture Moves a priority Queue for AI
+//Add the checkmate lose condition
+//No castling in check rule :/
+//Add Protected Logic whenever a capture move is made (do in capture function in ease)
+//make a function isWhite in Pieces class to make code more readable
+//may use regex to make searching faster and easier
+//change count with find as find has O(log n) complexity in comparison to O(n) complexity for count in unordered_set
 
 bool Enpassant = false;
 Pieces* getEnPassant = NULL;
 Pieces* checkEnPassant;
 vector< vector<Pieces*> > board(8, vector<Pieces*>(8, NULL));
 string kingToMove;//0 = white, 1 = black
+int castling = 0;//-1 for queen Side, 1 for king side, 0 for not possible
+string castlingMoves[4] = { "g8", "g1", "c8", "c1" };
 
 //Module 1-Pieces
 class Pieces {
@@ -41,6 +51,7 @@ public:
 		prevX.push(x);
 		prevY.push(y);
 	}
+	//string validCastling[4] = {"g8", "g1", "c8", "c1"};
 
 	//Used to see if a certain piece can be captured by another Piece
 	bool isChecked() {
@@ -162,9 +173,14 @@ public:
 		return false;
 	}
 
+	void resetMoves() {
+		possibleMoves.clear();
+		captureMoves.clear();
+	}
+
 	bool validMoves(string pos) {
 		checkEnPassant = getEnPassant;
-		pseudoLegalMoves(pos);//EnPassant decided after this line
+		pseudoLegalMoves();//EnPassant decided after this line
 		cout << "Moves: ";
 		for (string move : this->possibleMoves)
 			cout << move << " ";
@@ -183,6 +199,13 @@ public:
 		//for (string move : this->possibleMoves)
 		//	cout << move << " ";
 
+		if (getEnPassant != NULL && getEnPassant == this && (//for enPassant
+			(toMove(x, y + 2) != pos && this->name[0] == 'w') ||
+			(toMove(x, y - 2) != pos && this->name[0] == 'b')
+			)) {
+			getEnPassant = NULL;
+		}
+
 		if (checkEnPassant == getEnPassant && getEnPassant != NULL)//may have sm bugs but idk not gonna deep test dis
 		{
 			if ((pos == toMove(getEnPassant->x, getEnPassant->y - 1) && getEnPassant->name[0] == 'w') ||
@@ -190,6 +213,21 @@ public:
 				board[getEnPassant->y][getEnPassant->x] = NULL;
 			getEnPassant = NULL;
 
+		}
+
+		if (castling != 0){// && isCastlingMove(move)) {//code this new function
+			if (find(castlingMoves, castlingMoves + 4, pos) == castlingMoves + 4)//failsafe for invalid castling moves
+				castling = 0;
+
+			if (castling == 1)//king side castle
+			{
+				castling = 0;//need to reset to prevent rook to make infinte loop when it calls move function again
+				board[this->y][7]->move(toMove(5, this->y));
+			}
+			else if (castling == -1) {//queen side castle
+				castling = 0;
+				board[this->y][0]->move(toMove(3, this->y));
+			}
 		}
 
 		system("pause");
@@ -202,10 +240,6 @@ public:
 		y = pos[1] - '1';
 		board[y][x] = this;
 
-	}
-
-	string toMove(int x, int y) {
-		return string(1, (char)('a' + x)) + string(1, (char)('1' + y));
 	}
 
 	void undoMove()
@@ -222,7 +256,180 @@ public:
 		prevY.pop();
 	}
 
-	virtual unordered_set<string> pseudoLegalMoves(string pos) = 0;
+	bool isProtected();
+
+	bool verticalPin() {//so piece cannot move right or left
+		//searching a whole file (up and down the piece)
+		bool kingInFile = false;
+		bool threatInFile = false;
+
+		int file = this->x;
+		int rank = this->y;
+		for (int i = rank - 1; i >= 0; i--)
+			if (board[i][file] != NULL) {
+				if (board[i][file]->name[0] == this->name[0]) {//checking if king in file
+					if (board[i][file]->name[1] == 'K')
+						kingInFile = true;
+					break;
+				}
+				else {
+					if (board[i][file]->name[1] == 'Q' || board[i][file]->name[1] == 'R')
+						threatInFile = true;
+					break;
+				}
+			}
+
+		for (int i = rank + 1; i < 8; i++)//finding king
+			if (board[i][file] != NULL) {
+				if (board[i][file]->name[0] == this->name[0]) {//checking if king in file
+					if (board[i][file]->name[1] == 'K')
+						kingInFile = true;
+					break;//if any other white piece in way still should break
+				}
+				else {
+					if (board[i][file]->name[1] == 'Q' || board[i][file]->name[1] == 'R')
+						threatInFile = true;
+					break;
+				}
+			}
+
+		return kingInFile && threatInFile;
+	}
+
+	bool horizontalPin() {//have Enpassanat variation
+		//searching a whole rank (left and right of the pieces)
+		bool kingInRank = false;
+		bool threatInRank = false;
+
+		int rank = this->y;
+		int file = this->x;
+		for (int i = file + 1; i < 8; i++)
+			if (board[rank][i] != NULL) {
+				string pieceName = board[rank][i]->name;
+				if (pieceName[0] == this->name[0])//checking if king in file
+				{
+					if (pieceName[1] == 'K')
+						kingInRank = true;
+					break;
+				}
+
+				else {
+					if (pieceName[1] == 'Q' || pieceName[1] == 'R')
+						threatInRank = true;
+					break;
+				}
+			}
+
+		for (int i = file - 1; i >= 0; i--)
+			if (board[rank][i] != NULL) {
+				string pieceName = board[rank][i]->name;
+				if (pieceName[0] == this->name[0])//checking if king in file immediately
+				{
+					if (pieceName[1] == 'K')
+						kingInRank = true;
+					break;
+				}
+
+				else {
+					if (pieceName[1] == 'Q' || pieceName[1] == 'R')
+						threatInRank = true;
+					break;
+				}
+			}
+		return kingInRank && threatInRank;
+	}
+
+	bool rightDiagonalPin() {
+		bool diagonalThreat = false;
+		bool kingInDiagonal = false;
+
+		int rank = this->y;
+		int file = this->x;
+
+		//NE -> SW
+		int i = file + 1; int j = rank + 1;
+		for (; i < 8 && j < 8; i++, j++) //NE
+			if (board[j][i] != NULL) {
+				string pieceName = board[j][i]->name;
+				if (pieceName[0] == this->name[0])//checking if king in file immediately
+				{
+					if (pieceName[1] == 'K')
+						kingInDiagonal = true;
+					break;
+				}
+
+				else {
+					if (pieceName[1] == 'Q' || pieceName[1] == 'B')
+						diagonalThreat = true;
+					break;
+				}
+			}
+
+		i = file - 1; j = rank - 1;
+		for (; i >= 0 && j >= 0; i--, j--)//SW
+			if (board[j][i] != NULL) {
+				string pieceName = board[j][i]->name;
+				if (pieceName[0] == this->name[0])//checking if king in file immediately
+				{
+					if (pieceName[1] == 'K')
+						kingInDiagonal = true;
+					break;
+				}
+
+				else {
+					if (pieceName[1] == 'Q' || pieceName[1] == 'B')
+						diagonalThreat = true;
+					break;
+				}
+			}
+		return diagonalThreat && kingInDiagonal;
+	}
+
+	bool leftDiagonalPin() {
+		bool diagonalThreat = false;
+		bool kingInDiagonal = false;
+		int rank = this->y;
+		int file = this->x;
+
+		//NW -> SE
+		int i = file - 1; int j = rank + 1;
+		for (; i >= 0 && j < 8; i--, j++)//NW
+			if (board[j][i] != NULL) {
+				string pieceName = board[j][i]->name;
+				if (pieceName[0] == this->name[0])//checking if king in file immediately
+				{
+					if (pieceName[1] == 'K')
+						kingInDiagonal = true;
+					break;
+				}
+				else {
+					if (pieceName[1] == 'Q' || pieceName[1] == 'B')
+						diagonalThreat = true;
+					break;
+				}
+			}
+
+		i = file + 1; j = rank - 1;
+		for (; i < 8 && j >= 0; i++, j--)//SE
+			if (board[j][i] != NULL) {
+				string pieceName = board[j][i]->name;
+				if (pieceName[0] == this->name[0])//checking if king in file immediately
+				{
+					if (pieceName[1] == 'K')
+						kingInDiagonal = true;
+					break;
+				}
+
+				else {
+					if (pieceName[1] == 'Q' || pieceName[1] == 'B')
+						diagonalThreat = true;
+					break;
+				}
+			}
+		return diagonalThreat && kingInDiagonal;
+	}
+
+	virtual unordered_set<string> pseudoLegalMoves() = 0;
 
 };
 
@@ -231,46 +438,49 @@ public:
 	Pawn(string pos, string color) :Pieces(pos, color + "P", 10) {}
 	//list<string> possibleMoves;//will move this into pieces later as a unordered_set, as two pieces can never have the same start pos but can have same end pos
 
-	unordered_set<string> pseudoLegalMoves(string move) {//generating a rough lookup-table
-		possibleMoves.clear();
+	unordered_set<string> pseudoLegalMoves() {//generating a rough lookup-table
+		resetMoves();
 		//for white
+		bool Hpin = horizontalPin();
+		bool Vpin = verticalPin();
+		bool LDpin = leftDiagonalPin();
+		bool RDpin = rightDiagonalPin();
+
 		if (name[0] == 'w') {
-			if (board[y + 1][x - 1] != NULL && board[y + 1][x - 1]->name[0] == 'b')//capture left
+			if (board[y + 1][x - 1] != NULL && board[y + 1][x - 1]->name[0] == 'b' && !Vpin && !Hpin && !RDpin)//capture left
 			{
 				possibleMoves.insert(toMove(x - 1, y + 1));
 				captureMoves.insert(toMove(x - 1, y + 1));
 			}
 
-			if (board[y + 1][x + 1] != NULL && board[y + 1][x + 1]->name[0] == 'b')//capture right
+			if (board[y + 1][x + 1] != NULL && board[y + 1][x + 1]->name[0] == 'b' && !Vpin && !Hpin && !LDpin)//capture right
 			{
 				possibleMoves.insert(toMove(x + 1, y + 1));
 				captureMoves.insert(toMove(x + 1, y + 1));
 			}
 
-			if (board[y + 2][x] == NULL && this->y == 1)//double push so chance to enpassant
+			if (board[y + 2][x] == NULL && this->y == 1 && !Hpin && !LDpin && !RDpin)//double push so chance to enpassant
 			{
 				possibleMoves.insert(toMove(x, y + 2));
-				if (toMove(x, y + 2) == move && (
-						(board[y + 2][x - 1] != NULL && board[y + 2][x - 1]->name == "bP") ||
-						(board[y + 2][x + 1] != NULL && board[y + 2][x + 1]->name == "bP")
-						)//checking if pawn on right or left
+				if ((board[y + 2][x - 1] != NULL && board[y + 2][x - 1]->name == "bP") ||
+					(board[y + 2][x + 1] != NULL && board[y + 2][x + 1]->name == "bP") //checking if pawn on right or left
 					)//if this is the move made then update enPassant var
 					getEnPassant = this;
 			}
 
-			if (board[y + 1][x] == NULL)//single push l8r with promotion
+			if (board[y + 1][x] == NULL && !Hpin && !LDpin && !RDpin)//single push l8r with promotion
 				possibleMoves.insert(toMove(x, y + 1));//check for promotion later
 
-			if (y == 4) {//enPassant baybee
+			if (y == 4 && !Vpin && !Hpin) {//enPassant baybee, need to check for both horizontal and vertical pins smfh
 				Pieces* west = board[y][x - 1];
 				Pieces* east = board[y][x + 1];
 
-				if (west != NULL && west == getEnPassant)
+				if (west != NULL && west == getEnPassant && !RDpin)
 				{
 					possibleMoves.insert(toMove(x - 1, y + 1));
 					captureMoves.insert(toMove(x - 1, y));
 				}
-				if (east != NULL && east == getEnPassant)
+				if (east != NULL && east == getEnPassant && !LDpin)
 				{
 					possibleMoves.insert(toMove(x + 1, y + 1));
 					captureMoves.insert(toMove(x + 1, y));
@@ -279,42 +489,40 @@ public:
 			}
 		}
 		else {
-			if (board[y - 1][x - 1] != NULL && board[y + 1][x - 1]->name[0] == 'w')//capture left
+			if (board[y - 1][x - 1] != NULL && board[y - 1][x - 1]->name[0] == 'w' && !Vpin && !Hpin && !LDpin)//capture left
 			{
 				possibleMoves.insert(toMove(x - 1, y - 1));
 				captureMoves.insert(toMove(x - 1, y - 1));
 			}
 
-			if (board[y - 1][x + 1] != NULL && board[y + 1][x - 1]->name[0] == 'w')//capture right
+			if (board[y - 1][x + 1] != NULL && board[y - 1][x + 1]->name[0] == 'w' && !Vpin && !Hpin && !RDpin)//capture right
 			{
 				possibleMoves.insert(toMove(x + 1, y - 1));
 				captureMoves.insert(toMove(x + 1, y - 1));
 			}
 
-			if (board[y - 2][x] == NULL && this->y == 6) {//Double push
+			if (board[y - 2][x] == NULL && this->y == 6 && !Hpin && !LDpin && !RDpin) {//Double push
 				possibleMoves.insert(toMove(x, y - 2));
 				if (
-					toMove(x, y - 2) == move && (
-						(board[y - 2][x - 1] != NULL && board[y - 2][x - 1]->name == "wP") ||
-						(board[y - 2][x + 1] != NULL && board[y - 2][x + 1]->name == "wP")
-						)
+					(board[y - 2][x - 1] != NULL && board[y - 2][x - 1]->name == "wP") ||
+					(board[y - 2][x + 1] != NULL && board[y - 2][x + 1]->name == "wP")
 					)//checking if pawn can be enpassanted
 					getEnPassant = this;
 			}
 
-			if (board[y - 1][x] == NULL)//single push
+			if (board[y - 1][x] == NULL && !Hpin && !LDpin && !RDpin)//single push
 				possibleMoves.insert(toMove(x, y - 1));//promotion logic exists so will make AI most likely only choose to promote queen ???
 
-			if (y == 3) {//lmao get enPassanted 
+			if (y == 3 && !Hpin && !Vpin) {//lmao get enPassanted 
 				Pieces* west = board[y][x - 1];
 				Pieces* east = board[y][x + 1];
 
-				if (west != NULL && west == getEnPassant)
+				if (west != NULL && west == getEnPassant && !LDpin)
 				{
 					possibleMoves.insert(toMove(x - 1, y - 1));
 					captureMoves.insert(toMove(x - 1, y));
 				}
-				if (east != NULL && east == getEnPassant)
+				if (east != NULL && east == getEnPassant && !RDpin)
 				{
 					possibleMoves.insert(toMove(x + 1, y - 1));
 					captureMoves.insert(toMove(x + 1, y));
@@ -329,11 +537,15 @@ public:
 class Knight :public Pieces {
 public:
 	Knight(string pos, string color) :Pieces(pos, color + "N", 30) {}
-
-	unordered_set<string> pseudoLegalMoves(string pos) {
-		possibleMoves.clear();
+	bool pin = horizontalPin() && verticalPin() && leftDiagonalPin() && rightDiagonalPin();
+	//if horse pinned it cannot moved anywhere
+	unordered_set<string> pseudoLegalMoves() {
+		resetMoves();
 		//moving like an octopus smh
 		//--|
+		if (pin)//return empty set as horse has no valid moves
+			return possibleMoves;
+
 		if (this->x + 2 < 8 && this->y + 1 < 8 && (board[this->y + 1][this->x + 2] == NULL || board[this->y + 1][this->x + 2]->name[0] != this->name[0]))
 		{
 			possibleMoves.insert(toMove(this->x + 2, this->y + 1));
@@ -406,10 +618,20 @@ public:
 		cout << "Imma Bishop";
 	}
 
-	unordered_set<string> pseudoLegalMoves(string pos) {
+	unordered_set<string> pseudoLegalMoves() {
+		bool Hpin = horizontalPin();
+		bool Vpin = verticalPin();
+		bool LDpin = leftDiagonalPin();
+		bool RDpin = rightDiagonalPin();
+
 		int i = 0; int j = 0;
-		possibleMoves.clear();
-		for (i = this->y - 1, j = this->x - 1; i >= 0 && j >= 0; i--, j--) {//sw
+		resetMoves();
+
+		//if bishop binned vertically or horizontally then it cannot move
+		if (Hpin || Vpin)
+			return possibleMoves;
+
+		for (i = this->y - 1, j = this->x - 1; i >= 0 && j >= 0 && !LDpin; i--, j--) {//sw
 			if (board[i][j] != NULL)
 			{
 				if (board[i][j]->name[0] != this->name[0])
@@ -422,7 +644,7 @@ public:
 			possibleMoves.insert(toMove(j, i));
 		}
 
-		for (i = this->y - 1, j = this->x + 1; i >= 0 && j < 8; i--, j++)//se
+		for (i = this->y - 1, j = this->x + 1; i >= 0 && j < 8 && !RDpin; i--, j++)//se
 		{
 			if (board[i][j] != NULL)
 			{
@@ -437,7 +659,7 @@ public:
 
 		}
 
-		for (i = this->y + 1, j = this->x - 1; i < 8 && j >= 0; i++, j--)//nw
+		for (i = this->y + 1, j = this->x - 1; i < 8 && j >= 0 && !RDpin; i++, j--)//nw
 		{
 			if (board[i][j] != NULL)
 			{
@@ -452,7 +674,7 @@ public:
 
 		}
 
-		for (i = this->y + 1, j = this->x + 1; i < 8 && j < 8; i++, j++)//ne
+		for (i = this->y + 1, j = this->x + 1; i < 8 && j < 8 && !LDpin; i++, j++)//ne
 		{
 			if (board[i][j] != NULL)
 			{
@@ -480,9 +702,18 @@ public:
 		cout << "Imma Rookzzz";
 	}
 
-	unordered_set<string> pseudoLegalMoves(string pos) {
-		possibleMoves.clear();
-		for (int i = this->y - 1; i >= 0; i--)//north
+	unordered_set<string> pseudoLegalMoves() {
+		bool Hpin = horizontalPin();
+		bool Vpin = verticalPin();
+		bool LDpin = leftDiagonalPin();
+		bool RDpin = rightDiagonalPin();
+
+		resetMoves();
+
+		if (LDpin || RDpin)
+			return possibleMoves;
+
+		for (int i = this->y - 1; i >= 0 && !Hpin; i--)//north
 		{
 			if (board[i][this->x] != NULL)
 			{
@@ -496,7 +727,7 @@ public:
 			possibleMoves.insert(toMove(this->x, i));
 		}
 
-		for (int i = this->y + 1; i < 8; i++)//south
+		for (int i = this->y + 1; i < 8 && !Hpin; i++)//south
 		{
 			if (board[i][this->x] != NULL)//going till it is blocked
 			{
@@ -511,7 +742,7 @@ public:
 		}
 
 
-		for (int j = this->x - 1; j >= 0; j--)//west
+		for (int j = this->x - 1; j >= 0 && !Vpin; j--)//west
 		{
 			if (board[this->y][j] != NULL)
 			{
@@ -525,7 +756,7 @@ public:
 			possibleMoves.insert(toMove(j, this->y));
 		}
 
-		for (int j = this->x + 1; j < 8; j++)//east
+		for (int j = this->x + 1; j < 8 && !Vpin; j++)//east
 		{
 			if (board[this->y][j] != NULL)
 			{
@@ -548,13 +779,13 @@ class Queen :public Pieces {
 public:
 	Queen(string pos, string color) :Pieces(pos, color + "Q", 90) {}
 
-	unordered_set<string> pseudoLegalMoves(string pos) {
-		possibleMoves.clear();
+	unordered_set<string> pseudoLegalMoves() {
+		resetMoves();
 		Bishop bisMoves = *((Bishop*)this);
 		Rook rookMoves = *((Rook*)this);
 
-		unordered_set<string> diagonals = bisMoves.pseudoLegalMoves(pos);//downcasting piece as bishop and storing its possible moves
-		possibleMoves = rookMoves.pseudoLegalMoves(pos);//downcasting piece as rook and storing its possible moves
+		unordered_set<string> diagonals = bisMoves.pseudoLegalMoves();//downcasting piece as bishop and storing its possible moves
+		possibleMoves = rookMoves.pseudoLegalMoves();//downcasting piece as rook and storing its possible moves
 		unordered_set<string> diagonalCapture = bisMoves.captureMoves;
 		captureMoves = rookMoves.captureMoves;
 
@@ -568,25 +799,91 @@ public:
 	}
 };
 
+bool Pieces::isProtected() {//mainly for king capturing opposing/checking pieces
+	//diagonals
+	//chaging color to get pieces of same color using capture space
+	bool safe = false;
+	if (this->name[0] == 'w')
+		this->name[0] = 'b';
+	else
+		this->name[0] = 'w';
+
+	Queen capturedThreat = *((Queen*)this);
+	capturedThreat.pseudoLegalMoves();
+	//capturedThreat->pseudoLegalMoves();//generating captures for if the piece was the opposite color queen
+	/*if (captureMoves.empty())
+		return false;
+	//cout << "Protected by: ";
+	*/
+	for (string pos : capturedThreat.captureMoves) {//ensure that only same color pieces in this list TESTING REQUIRED
+		int* move = decodePosition(pos);
+		string pieceName = board[move[1]][move[0]]->name;
+		if ((move[1] == this->y || move[0] == this->x) &&//Protected vertically or horizontally
+			(pieceName[1] == 'R' ||
+				pieceName[1] == 'Q'))
+			safe = true;
+
+		else if (pieceName[1] == 'B' || pieceName[1] == 'Q')//otherwise protected by long diagonal
+			safe = true;
+
+		else if (pieceName[1] == 'P') {//pawn protection
+			if (pieceName[0] == 'w' &&
+				move[1] == this->y - 1 && (move[0] == this->x - 1 || move[0] == this->x + 1))
+				safe = true;
+			else if (move[1] == this->y + 1 && (move[0] == this->x - 1 || move[0] == this->x + 1))
+				safe = true;
+		}
+
+		else if (pieceName[1] == 'K')//King protection
+		{
+			if ((move[0] == this->x - 1 || move[0] == this->x || move[0] == this->x + 1) &&
+				(move[1] == this->y - 1 || move[1] == this->y || move[0] == this->y + 1))
+				safe = true;
+		}
+	}
+
+	Knight _capturedLThreat = *((Knight*)this);
+	_capturedLThreat.pseudoLegalMoves();
+	for (string captures : _capturedLThreat.captureMoves) {
+		int* Lpos = decodePosition(captures);
+		if (board[Lpos[1]][Lpos[0]]->name[1] == 'N')//capture only gives us same color pieces as the protected piece on the L position
+			safe = true;
+	}
+
+	//resetting kings color
+	if (this->name[0] == 'w')
+		this->name[0] = 'b';
+	else
+		this->name[0] = 'w';
+
+	//cout << endl;
+	return safe;
+}
+
 class King :public Pieces {
 	Player* opponent;
+	//vector<string> castlingMoves(2, "0");
 public:
 	list<string> checks;
-	King(string pos, string color) :Pieces(pos, color + "K", 999) {}
+	King(string pos, string color) :Pieces(pos, color + "K", 999), opponent(NULL) {}
 
 	void setOpponent(Player& opp);
 
-	bool isChecked() {//logic for checking if piece checked
+	bool isChecked() {
+		return !checkedList().empty();
+	}
+
+	list<string> checkedList() {//logic for checking if piece checked
 		checks.clear();
 		Rook LinearThreats = *((Rook*)this);
 		Bishop DiagonalThreats = *((Bishop*)this);
 		Knight LThreats = *((Knight*)this);
 		Pawn pawnThreats = *((Pawn*)this);
 
-		LinearThreats.pseudoLegalMoves(toMove(this->x, this->y));//this covers all horizontal and vertical threats the king may face
-		LThreats.pseudoLegalMoves(toMove(this->x, this->y));//this covers Knight threats
-		DiagonalThreats.pseudoLegalMoves(toMove(this->x, this->y));//covers diagonals
-		pawnThreats.pseudoLegalMoves(toMove(this->x, this->y));//covers smaller siagonal with a pawn
+		LinearThreats.pseudoLegalMoves();//this covers all horizontal and vertical threats the king may face
+		LThreats.pseudoLegalMoves();//this covers Knight threats
+		DiagonalThreats.pseudoLegalMoves();//covers diagonals
+		pawnThreats.pseudoLegalMoves();//covers smaller siagonal with a pawn
 
 		//merging all the threats
 		for (string threat : LinearThreats.captureMoves) {
@@ -623,18 +920,18 @@ public:
 				checks.push_back(threat);
 		}
 
-		for (string threat : checks) {
+		/*for (string threat : checks) {
 			cout << threat << " ";
-		}
+		}*/
 		cout << endl;
-		if (checks.empty())
-			return false;
-		return true;
+		return checks;
 
 	}
 
-	unordered_set<string> pseudoLegalMoves(string pos){
-		possibleMoves.clear();
+	unordered_set<string> pseudoLegalMoves(){
+		resetMoves();
+		bool castlingFlag = false;
+		castling = 0;
 		//N
 		if (y > 0 && (board[this->y - 1][this->x] == NULL || board[this->y - 1][this->x]->name[0] != this->name[0]))
 			possibleMoves.insert(toMove(this->x, this->y - 1));
@@ -662,39 +959,67 @@ public:
 
 		//checking for castling
 		// add color of rook as well just to prevent any bugs in custom positions
-		//King side castling hence west
+		//Queen side castling hence west
 		if (board[this->y][0] != NULL &&//checking if piece in that location exists
 			board[this->y][0]->name[1] == 'R' && board[this->y][0]->prevX.size() == 1 &&//the square has same coloured unmoved Rook
-			board[this->y][1] == NULL && board[this->y][2] == NULL &&//empty spaces between left rook and king
-			this->prevX.size() == 1 && this->x == 3)//king has not moved from its own position
+			board[this->y][1] == NULL && board[this->y][2] == NULL && board[this->y][3] == NULL &&//empty spaces between left rook and king, filter out by legal moves
+			this->prevX.size() == 1 && this->x == 4)//king has not moved from its own position
 		{
 			possibleMoves.insert(toMove(this->x - 2, this->y));//Castling possible, write castling logic below
-			if (pos == *(possibleMoves.end()--))//hence user wants to castle
-			{
-				//this->x -= 2;
-				//moving and updating rooks position
-				board[this->y][0]->move(toMove(2, this->y));
-				//>>>>Add some undo logic here<<<<
-			}
+			castlingFlag = true;
 		}
 
-		//Queen side castling hence east
+		//King side castling hence east
 		if (board[this->y][7] != NULL &&//checking if piece in that location exists
 			board[this->y][7]->name[1] == 'R' && board[this->y][7]->prevX.size() == 1 &&//the square has same coloured unmoved Rook
-			board[this->y][6] == NULL && board[this->y][5] == NULL && board[this->y][4] == NULL &&//empty spaces between right rook and king
-			this->prevX.size() == 1 && this->x == 3)//king has not moved from its own position
+			board[this->y][6] == NULL && //automatically gets catered
+			//>>>>Check after legal move<<<possibleMoves.count(toMove(5, this->y)) && //board[this->y][5] == NULL &&//empty spaces between right rook and king, this caters itself as king in check if this block
+			this->prevX.size() == 1 && this->x == 4)//king has not moved from its own position
 		{
 			possibleMoves.insert(toMove(this->x + 2, this->y));//Castling possible, write castling logic below
-			if (pos == *(possibleMoves.end()--))//hence user wants to castle
-			{
-				//this->x += 2;
-				board[this->y][7]->move(toMove(4, this->y));
-				//>>>>Add some undo logic here<<<<
+			castlingFlag = true;
+		}
+
+		if (kingToMove != this->name)
+			return possibleMoves;
+
+		if (kingToMove == this->name)//filtering so king only has legal moves.
+		{
+			legalMoves();
+			unordered_set<string> tempCopy(possibleMoves);
+			for (string moves : possibleMoves) {
+				int* coord = decodePosition(moves);
+				if (board[coord[1]][coord[0]] != NULL && board[coord[1]][coord[0]]->name[0] != this->name[0])
+					if (!board[coord[1]][coord[0]]->isProtected())
+						captureMoves.insert(moves);
+					else
+						tempCopy.erase(tempCopy.find(moves));
+			}
+			possibleMoves = tempCopy;
+		}
+
+		//castling checks
+		if (castlingFlag) {//need to revamp logic here as this should only generate moves not do them
+			if (possibleMoves.count(toMove(5, this->y)) && possibleMoves.count(toMove(6, this->y)))//king side castling only possible if no rays at the kings final and initial position
+				castling = 1;
+				//board[this->y][7]->move(toMove(5, this->y));//put this logic somewhere else
+			else {
+				unordered_set<string>::iterator cond2 = possibleMoves.find(toMove(6, this->y));
+				if (cond2 != possibleMoves.end())
+					possibleMoves.erase(cond2);
+			}
+			if (possibleMoves.count(toMove(3, this->y)) && possibleMoves.count(toMove(2, this->y)))//same as above
+				castling = -1;
+				//board[this->y][0]->move(toMove(3, this->y));
+
+			else{//otherwise removing the moves from the legal moves entirely
+				unordered_set<string>::iterator cond1 = possibleMoves.find(toMove(2, this->y));
+				if (cond1 != possibleMoves.end())
+					possibleMoves.erase(cond1);
 			}
 		}
 
-		if (kingToMove == this->name)
-			legalMoves();
+		
 		return possibleMoves;
 	}//change return to legalMoves function
 
@@ -777,14 +1102,33 @@ public:
 		pieces.push_back(new Pawn("f2", "w"));
 		pieces.push_back(new Pawn("c5", "w"));*/
 
+		//DO NOT DEFINE KING HERE AS IT IS BEING IMPLICITY MADE WHEN PLAYER CREATED
 		if (isWhite) {
-			pieces.push_back(new Queen("c5", "w"));
-			pieces.push_back(new Knight("h6", "w"));
-			pieces.push_back(new Knight("b6", "w"));
+			//Checkmate
+			//pieces.push_back(new Rook("a7", "w"));
+			//pieces.push_back(new Queen("d4", "w"));
+			//pieces.push_back(new Pawn("f2", "w"));
+			//pieces.push_back(new Pawn("c5", "w"));
+			//Pins
+			pieces.push_back(new Queen("f1", "w"));
+			pieces.push_back(new Pawn("d6", "w"));
+			//pieces.push_back(new Rook("e2", "w"));
+			pieces.push_back(new Queen("d2", "w"));
+			pieces.push_back(new Bishop("g6", "w"));
 		}
 		else {
-			pieces.push_back(new Rook("f8", "b"));
-			pieces.push_back(new Bishop("h3", "b"));
+			//checkMate
+			/*//pieces.push_back(new Pawn("e4", "b"));
+			//pieces.push_back(new Pawn("b7", "b"));
+			pieces.push_back(new Rook("a2", "b"));
+			pieces.push_back(new Rook("h8", "b"));
+			pieces.push_back(new Knight("g3", "b"));*/
+			//Pins
+			//pieces.push_back(new Queen("e7", "b"));
+			pieces.push_back(new Pawn("g2", "b"));
+			pieces.push_back(new Rook("h1", "b"));
+			pieces.push_back(new Pawn("f7", "b"));
+			pieces.push_back(new Bishop("g5", "b"));
 		}
 	}
 
@@ -830,8 +1174,74 @@ public:
 		this->pushPiece(piece);
 	}
 
-	void LegalMovesInCheck() {
-		cout << "Legal Moves here";
+	map<Pieces*, unordered_set<string>> LegalMovesInCheck() {//>>>>Avoding checkmate logic here, user only allowed to make these moves
+		//atm just generating the kingMoves
+		map<Pieces*, unordered_set<string>> movesInCheck;
+		king->pseudoLegalMoves();
+		movesInCheck[king] = king->possibleMoves;//for avoiding general checks
+		list<string> danger = king->checkedList();//getting positions where piece is checked from
+		int* attackerPos = decodePosition(*danger.begin());
+		Pieces* attackerPiece = board[attackerPos[1]][attackerPos[0]];
+		if (danger.size() > 1)//for double check, can only move king
+			return movesInCheck;
+
+		/*for (string kingMove : king->possibleMoves)values already in unordered set
+			danger.push_back(kingMove);*/
+
+		//adding empty spaces where we can block forseen check
+		if (attackerPos[0] == king->x)// so we know that opposing piece has vertical or horizontal ray
+		{
+			int mul = 1;
+			if (attackerPos[1] > king->y)
+				mul *= -1;
+			for (int i = attackerPos[0] + mul; i != king->x; i += mul)
+				danger.push_back(toMove(king->x, i));
+		}
+
+		else if (attackerPos[1] == king->y) {
+			int mul = 1;
+			if (attackerPos[0] > king->x)
+				mul *= -1;
+			for (int i = attackerPos[0] + mul; i != king->x; i += mul)
+				danger.push_back(toMove(i, king->y));
+		}
+
+		else if (attackerPiece->name[1] != 'N' || attackerPiece->name[1] != 'P')//Hence if both of these eliminated then only diagonal check possible
+		{
+			int mulEW = 1, mulNS = 1;
+			if (attackerPos[0] > king->x)
+				mulEW *= -1;
+			if (attackerPos[1] > king->y)
+				mulNS *= -1;
+
+			int i = attackerPos[0] + mulEW, j = attackerPos[1] + mulNS;
+			for (; king->x != i && king->y != j; i += mulEW, j += mulNS) {
+				danger.push_back(toMove(i, j));
+			}
+		}
+		
+		//generating all possible moves for all pieces and comparing it with moves in danger
+		for (Pieces* p : pieces) {
+			if (p->name[1] == 'K')
+				continue;
+			p->pseudoLegalMoves();
+			unordered_set<string> blockingMoves;
+			for (string threatSpace : danger) {
+				if (p->possibleMoves.find(threatSpace) != p->possibleMoves.end())
+					blockingMoves.insert(threatSpace);
+			}
+			if (!blockingMoves.empty())
+				movesInCheck[p] = blockingMoves;
+		}
+
+		return movesInCheck;
+		//call function to get captured Pieces in each case
+		//capturing the checking piece
+		//if (attackerPiece->name[1] == 'N' || attackerPiece->name[1] == 'P')//checked by knight, pawn checked cannot be blocked so need to capture or move king
+		//blocking check and not possible if checked by knight, pawn checked cannot be blocked, and king cannot give check
+		
+
+
 	}
 
 	void Promotion(Pieces* piece)
@@ -878,11 +1288,26 @@ void King::setOpponent(Player& opp) {
 	opponent = &opp;
 }
 
-void King::legalMoves() {
+void King::legalMoves() {//>>>Can be made more efficient by only going through the king moves, check isin function or smthn<<<
 	//possibleMoves = pseudoLegalMoves(toMove(this->x, this->y));
 	board[this->y][this->x] = NULL;//so the king is no longer in the "ray" of the attacking piece
-	for (Pieces* piece : opponent->getPieces()) {
-		piece->pseudoLegalMoves(toMove(piece->x, piece->y));//setting the pieces pseudoLegalMoves unordered set
+	for (Pieces* piece : opponent->getPieces()) {//Error here ://////
+		
+		//PAWN HAS DIFFERENT ATTACK PATTERN
+		if (piece->name[1] == 'P') {
+			piece->resetMoves();
+			if (piece->name[0] == 'w') {
+				piece->possibleMoves.insert(toMove(this->x + 1, this->y + 1));//can generate illegal moves as we do not care for these moves
+				piece->possibleMoves.insert(toMove(this->x - 1, this->y + 1));
+			}
+
+			else {//black Pawn
+				piece->possibleMoves.insert(toMove(this->x + 1, this->y - 1));//can generate illegal moves as we do not care for these moves
+				piece->possibleMoves.insert(toMove(this->x - 1, this->y - 1));
+			}
+		}
+		else
+			piece->pseudoLegalMoves();//setting the pieces pseudoLegalMoves unordered set
 		for (string move : piece->possibleMoves)
 			if (possibleMoves.count(move) > 0)
 				possibleMoves.erase(possibleMoves.find(move));
@@ -926,6 +1351,10 @@ int* decodePosition(string pos) {
 	position[1] = pos[1] - '1';
 
 	return position;
+}
+
+string toMove(int x, int y) {
+	return string(1, (char)('a' + x)) + string(1, (char)('1' + y));
 }
 
 //Input validation function
@@ -977,8 +1406,19 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	displayBoard();
 
 	if (A.getKing()->isChecked()) {
-		cout << "Check!!!\n";
-		A.LegalMovesInCheck();
+		map<Pieces*, unordered_set<string>> movesInCheck = A.LegalMovesInCheck();
+		if (movesInCheck.empty())
+			cout << "CheckMate...\n";
+		//add player losing logic here
+		else {
+			cout << "Check!!!\n";
+			for (auto i = movesInCheck.begin(); i != movesInCheck.end(); i++) {
+				cout << "Piece: " << i->first->name << endl << "Moves: ";
+				for (auto j = i->second.begin(); j != i->second.end(); j++)
+					cout << *j << " ";
+				cout << endl;
+			}
+		}
 	}
 
 	cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
@@ -1319,7 +1759,7 @@ void vsAIGame()
 void vsPlayerGame()
 {
 	system("CLS");
-	bool isWhite = rand() % 2;
+	bool isWhite = 0;// rand() % 2;
 	bool CheckRollback = false;
 	bool skipPlayer = false;
 	int WinorLose = 0;
