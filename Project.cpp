@@ -447,33 +447,38 @@ public:
 		bool RDpin = rightDiagonalPin();
 
 		if (name[0] == 'w') {
-			if (board[y + 1][x - 1] != NULL && board[y + 1][x - 1]->name[0] == 'b' && !Vpin && !Hpin && !RDpin)//capture left
+			if (x > 0 && y < 7 && board[y + 1][x - 1] != NULL && board[y + 1][x - 1]->name[0] == 'b' && !Vpin && !Hpin && !RDpin)//capture left
 			{
 				possibleMoves.insert(toMove(x - 1, y + 1));
 				captureMoves.insert(toMove(x - 1, y + 1));
 			}
 
-			if (board[y + 1][x + 1] != NULL && board[y + 1][x + 1]->name[0] == 'b' && !Vpin && !Hpin && !LDpin)//capture right
+			if (x < 7 && y < 7 && board[y + 1][x + 1] != NULL && board[y + 1][x + 1]->name[0] == 'b' && !Vpin && !Hpin && !LDpin)//capture right
 			{
 				possibleMoves.insert(toMove(x + 1, y + 1));
 				captureMoves.insert(toMove(x + 1, y + 1));
 			}
 
-			if (board[y + 2][x] == NULL && this->y == 1 && !Hpin && !LDpin && !RDpin)//double push so chance to enpassant
+			if (this->y == 1 && board[y + 2][x] == NULL && !Hpin && !LDpin && !RDpin)//double push so chance to enpassant
 			{
 				possibleMoves.insert(toMove(x, y + 2));
-				if ((board[y + 2][x - 1] != NULL && board[y + 2][x - 1]->name == "bP") ||
-					(board[y + 2][x + 1] != NULL && board[y + 2][x + 1]->name == "bP") //checking if pawn on right or left
+				if ((x > 0 && board[y + 2][x - 1] != NULL && board[y + 2][x - 1]->name == "bP") ||
+					(x < 7 && board[y + 2][x + 1] != NULL && board[y + 2][x + 1]->name == "bP") //checking if pawn on right or left
 					)//if this is the move made then update enPassant var
 					getEnPassant = this;
 			}
 
-			if (board[y + 1][x] == NULL && !Hpin && !LDpin && !RDpin)//single push l8r with promotion
+			if (y < 7 && board[y + 1][x] == NULL && !Hpin && !LDpin && !RDpin)//single push l8r with promotion
 				possibleMoves.insert(toMove(x, y + 1));//check for promotion later
 
 			if (y == 4 && !Vpin && !Hpin) {//enPassant baybee, need to check for both horizontal and vertical pins smfh
-				Pieces* west = board[y][x - 1];
-				Pieces* east = board[y][x + 1];
+
+				Pieces* west = NULL;
+				Pieces* east = NULL;
+				if (x > 0)
+					west = board[y][x - 1];
+				if (x < 7)
+					east = board[y][x + 1];
 
 				if (west != NULL && west == getEnPassant && !RDpin)
 				{
@@ -489,33 +494,37 @@ public:
 			}
 		}
 		else {
-			if (board[y - 1][x - 1] != NULL && board[y - 1][x - 1]->name[0] == 'w' && !Vpin && !Hpin && !LDpin)//capture left
+			if (x > 0 && y > 0 && board[y - 1][x - 1] != NULL && board[y - 1][x - 1]->name[0] == 'w' && !Vpin && !Hpin && !LDpin)//capture left
 			{
 				possibleMoves.insert(toMove(x - 1, y - 1));
 				captureMoves.insert(toMove(x - 1, y - 1));
 			}
 
-			if (board[y - 1][x + 1] != NULL && board[y - 1][x + 1]->name[0] == 'w' && !Vpin && !Hpin && !RDpin)//capture right
+			if (x < 7 && y > 0 && board[y - 1][x + 1] != NULL && board[y - 1][x + 1]->name[0] == 'w' && !Vpin && !Hpin && !RDpin)//capture right
 			{
 				possibleMoves.insert(toMove(x + 1, y - 1));
 				captureMoves.insert(toMove(x + 1, y - 1));
 			}
 
-			if (board[y - 2][x] == NULL && this->y == 6 && !Hpin && !LDpin && !RDpin) {//Double push
+			if (this->y == 6 && board[y - 2][x] == NULL && !Hpin && !LDpin && !RDpin) {//Double push
 				possibleMoves.insert(toMove(x, y - 2));
 				if (
-					(board[y - 2][x - 1] != NULL && board[y - 2][x - 1]->name == "wP") ||
-					(board[y - 2][x + 1] != NULL && board[y - 2][x + 1]->name == "wP")
+					(x > 0 && board[y - 2][x - 1] != NULL && board[y - 2][x - 1]->name == "wP") ||
+					(x < 7 && board[y - 2][x + 1] != NULL && board[y - 2][x + 1]->name == "wP")
 					)//checking if pawn can be enpassanted
 					getEnPassant = this;
 			}
 
-			if (board[y - 1][x] == NULL && !Hpin && !LDpin && !RDpin)//single push
+			if (y > 0 && board[y - 1][x] == NULL && !Hpin && !LDpin && !RDpin)//single push
 				possibleMoves.insert(toMove(x, y - 1));//promotion logic exists so will make AI most likely only choose to promote queen ???
 
 			if (y == 3 && !Hpin && !Vpin) {//lmao get enPassanted 
-				Pieces* west = board[y][x - 1];
-				Pieces* east = board[y][x + 1];
+				Pieces* west = NULL;
+				Pieces* east = NULL;
+				if (x > 0)
+					west = board[y][x - 1];
+				if (x < 7)
+					east = board[y][x + 1];;
 
 				if (west != NULL && west == getEnPassant && !LDpin)
 				{
@@ -1082,7 +1091,7 @@ public:
 		}
 		pieces.push_back(king);
 		//placing pawns
-		/*for (char i = 'a'; i < 'i'; i++)
+		for (char i = 'a'; i < 'i'; i++)
 		{
 			if (isWhite)
 				pieces.push_back(new Pawn(string(1, i) + "2", "w"));
@@ -1091,7 +1100,6 @@ public:
 		}
 
 		if (isWhite) {
-			pieces.push_back(new King("e1", "w"));
 			pieces.push_back(new Queen("d1", "w"));
 			pieces.push_back(new Bishop("c1", "w"));
 			pieces.push_back(new Bishop("f1", "w"));
@@ -1102,7 +1110,8 @@ public:
 		}
 
 		else {
-			pieces.push_back(new King("e8", "b"));
+
+			//pieces.push_back(new Pawn("d3", "b"));
 			pieces.push_back(new Queen("d8", "b"));
 			pieces.push_back(new Bishop("c8", "b"));
 			pieces.push_back(new Bishop("f8", "b"));
@@ -1110,7 +1119,7 @@ public:
 			pieces.push_back(new Knight("b8", "b"));
 			pieces.push_back(new Rook("a8", "b"));
 			pieces.push_back(new Rook("h8", "b"));
-		}*/
+		}
 
 		//>>>>Add pieces here<<<<
 		/*pieces.push_back(new Pawn("e4", "b"));
@@ -1119,7 +1128,7 @@ public:
 		pieces.push_back(new Pawn("c5", "w"));*/
 
 		//DO NOT DEFINE KING HERE AS IT IS BEING IMPLICITY MADE WHEN PLAYER CREATED
-		if (isWhite) {
+		/*if (isWhite) {
 			//Checkmate
 			//pieces.push_back(new Rook("a7", "w"));
 			//pieces.push_back(new Queen("d4", "w"));
@@ -1134,18 +1143,18 @@ public:
 		}
 		else {
 			//checkMate
-			/*//pieces.push_back(new Pawn("e4", "b"));
+			//pieces.push_back(new Pawn("e4", "b"));
 			//pieces.push_back(new Pawn("b7", "b"));
 			pieces.push_back(new Rook("a2", "b"));
 			pieces.push_back(new Rook("h8", "b"));
-			pieces.push_back(new Knight("g3", "b"));*/
+			pieces.push_back(new Knight("g3", "b"));
 			//Pins
 			//pieces.push_back(new Queen("e7", "b"));
 			pieces.push_back(new Pawn("g2", "b"));
 			pieces.push_back(new Rook("h1", "b"));
 			pieces.push_back(new Pawn("f7", "b"));
 			pieces.push_back(new Bishop("g5", "b"));
-		}
+		}*/
 	}
 
 	list<Pieces*>& getPieces() {
@@ -1193,8 +1202,10 @@ public:
 	map<Pieces*, unordered_set<string>> LegalMovesInCheck() {//>>>>Avoding checkmate logic here, user only allowed to make these moves
 		//atm just generating the kingMoves
 		map<Pieces*, unordered_set<string>> movesInCheck;
+		kingToMove = king->name;
 		king->pseudoLegalMoves();
-		movesInCheck[king] = king->possibleMoves;//for avoiding general checks
+		if (!king->possibleMoves.empty())
+			movesInCheck[king] = king->possibleMoves;//for avoiding general checks
 		list<string> danger = king->checkedList();//getting positions where piece is checked from
 		int* attackerPos = decodePosition(*danger.begin());
 		Pieces* attackerPiece = board[attackerPos[1]][attackerPos[0]];
@@ -1210,7 +1221,7 @@ public:
 			int mul = 1;
 			if (attackerPos[1] > king->y)
 				mul *= -1;
-			for (int i = attackerPos[0] + mul; i != king->x; i += mul)
+			for (int i = attackerPos[1] + mul; i != king->y; i += mul)
 				danger.push_back(toMove(king->x, i));
 		}
 
@@ -1420,13 +1431,23 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	string p1, p2;
 	bool CheckRollback = false;
 	displayBoard();
+	map<Pieces*, unordered_set<string>> movesInCheck;
+	Pieces* pieceSelected = NULL;
 
 	if (A.getKing()->isChecked()) {
-		map<Pieces*, unordered_set<string>> movesInCheck = A.LegalMovesInCheck();
+		movesInCheck = A.LegalMovesInCheck();
 		if (movesInCheck.empty())
+		{
 			cout << "CheckMate...\n";
+			if (isWhite)
+				WinorLose = 2;
+			else
+				WinorLose = 1;
+			return 1;
+		}
 		//add player losing logic here
 		else {
+			A.setCheck(true);
 			cout << "Check!!!\n";
 			for (auto i = movesInCheck.begin(); i != movesInCheck.end(); i++) {
 				cout << "Piece: " << i->first->name << endl << "Moves: ";
@@ -1482,18 +1503,36 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		{
 			cout << "Enter current position of piece: ";
 			cin >> p1;
-
+			
+			if (validPosition(p1) && A.Checked() && !movesInCheck.empty()) {
+				int* boardPos = decodePosition(p1);
+				if (movesInCheck.find(board[boardPos[1]][boardPos[0]]) == movesInCheck.end())//only move valid piece in check
+				{
+					cout << "Invalid Move, you are currently in check" << endl;
+					p1 = "999";
+				}
+			}
 		} while (!validPosition(p1));
 
 		//This checks if the piece chosen is actually the player's
 		if (!isvalid(isWhite, p1))
 			continue;
 
+		int* selectedPiecePos = decodePosition(p1);
+		pieceSelected = board[selectedPiecePos[1]][selectedPiecePos[0]];
+
 		do
 		{
 			cout << "Enter move: ";
 			cin >> p2;
-
+			if (validPosition(p2) && A.Checked() && !movesInCheck.empty()) {
+				int* boardPos = decodePosition(p2);
+				if (movesInCheck[pieceSelected].find(p2) == movesInCheck[pieceSelected].end())//only play valid move in check
+				{
+					cout << "Invalid Move, you are currently in check" << endl;
+					p2 = "999";
+				}
+			}
 		} while (!validPosition(p2));
 
 
@@ -1529,56 +1568,9 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			cout << "Invalid Move" << endl;
 			continue;
 		}
-
-		//Finding the King in the Player's pieces
-		/*typename list<Pieces*>::iterator iterPieces = A.getPieces().begin();
-		for (int i = 0; i < A.getPieces().size(); i++)
-		{
-			if ((*iterPieces)->name[1] == 'K')
-			{
-				//if it's checked, undoing the player's last move
-				if ((*iterPieces)->isChecked())
-				{
-					A.undo();
-					B.undo();
-
-					CheckRollback = true;
-					cout << endl << "Your King is Checked. You cannot make that move." << endl << endl;
-				}
-				else
-					break;
-			}
-
-			iterPieces++;
-		}
-
-		if (CheckRollback == true)
-		{
-			CheckRollback = false;
-			continue;
-		}
-		*/
 		system("CLS");
 		break;
 	}
-
-	//Checking if the Enemy king is Checkmated
-	/*typename list<Pieces*>::iterator iterPiecesB = B.getPieces().begin();
-	for (int i = 0; i < B.getPieces().size(); i++)
-	{
-		if ((*iterPiecesB)->name[1] == 'K' && (*iterPiecesB)->Checkmate())
-		{
-			cout << "The enemy king has been checkmated" << endl;
-			displayBoard();
-
-			if (isWhite)
-				WinorLose = 1;
-			else
-				WinorLose = 2;
-		}
-
-		iterPiecesB++;
-	}*/
 
 	return 0;
 }
@@ -1775,7 +1767,7 @@ void vsAIGame()
 void vsPlayerGame()
 {
 	system("CLS");
-	bool isWhite = 0;// rand() % 2;
+	bool isWhite = 1;// rand() % 2;
 	bool CheckRollback = false;
 	bool skipPlayer = false;
 	int WinorLose = 0;
