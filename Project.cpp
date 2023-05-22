@@ -913,6 +913,22 @@ public:
 				checks.push_back(threat);
 		}
 
+		//pawn moves
+		/*int mul = 1;
+		if (this->name[0] == 'b')
+			mul *= -1;
+		Pieces* pieceNameLeft = NULL, *pieceNameRight = NULL;
+
+		if (x != 0)
+			pieceNameLeft = board[this->y + mul][this->x - 1];
+		if (x != 7)
+			pieceNameRight = board[this->y + mul][this->x + 1];
+
+		if (pieceNameLeft != NULL && pieceNameLeft->name[0] != this->name[0] && pieceNameLeft->name[1] == 'P')
+			checks.push_back(toMove(this->x - 1, this->y + mul));
+		if (pieceNameRight != NULL && pieceNameRight->name[0] != this->name[0] && pieceNameRight->name[1] == 'P')
+			checks.push_back(toMove(this->x + 1, this->y + mul));
+		*/
 		for (string threat : LThreats.captureMoves) {
 			int* pos = decodePosition(threat);
 			Pieces* opPiece = board[pos[1]][pos[0]];
@@ -920,9 +936,9 @@ public:
 				checks.push_back(threat);
 		}
 
-		/*for (string threat : checks) {
+		for (string threat : checks) {
 			cout << threat << " ";
-		}*/
+		}
 		cout << endl;
 		return checks;
 
@@ -1297,13 +1313,13 @@ void King::legalMoves() {//>>>Can be made more efficient by only going through t
 		if (piece->name[1] == 'P') {
 			piece->resetMoves();
 			if (piece->name[0] == 'w') {
-				piece->possibleMoves.insert(toMove(this->x + 1, this->y + 1));//can generate illegal moves as we do not care for these moves
-				piece->possibleMoves.insert(toMove(this->x - 1, this->y + 1));
+				piece->possibleMoves.insert(toMove(piece->x + 1, piece->y + 1));//can generate illegal moves as we do not care for these moves
+				piece->possibleMoves.insert(toMove(piece->x - 1, piece->y + 1));
 			}
 
 			else {//black Pawn
-				piece->possibleMoves.insert(toMove(this->x + 1, this->y - 1));//can generate illegal moves as we do not care for these moves
-				piece->possibleMoves.insert(toMove(this->x - 1, this->y - 1));
+				piece->possibleMoves.insert(toMove(piece->x + 1, piece->y - 1));//can generate illegal moves as we do not care for these moves
+				piece->possibleMoves.insert(toMove(piece->x - 1, piece->y - 1));
 			}
 		}
 		else
