@@ -16,6 +16,7 @@ int* decodePosition(string pos);
 bool validPosition(string Space);
 string toMove(int, int);
 void displayBoard();
+void AITurn(Player&, map<Pieces*, unordered_set<string>>&);
 //call capture logic when a piece is captured like we did for enpassant
 //all directions based on black side
 //make capture Moves a priority Queue for AI
@@ -25,6 +26,7 @@ void displayBoard();
 //make a function isWhite in Pieces class to make code more readable
 //may use regex to make searching faster and easier
 //change count with find as find has O(log n) complexity in comparison to O(n) complexity for count in unordered_set
+//Horse L not counted as check 2 down 1 left for AI
 
 bool Enpassant = false;
 Pieces* getEnPassant = NULL;
@@ -71,103 +73,6 @@ public:
 					return true;
 			}
 
-		}
-
-		return false;
-	}
-
-	//Possible for extremely small fringe cases to not be checkmated.
-	//Testing required.
-	bool Checkmate()
-	{
-		//Three conditions for a checkmate
-		//1. The King is Checked
-		//2. The King's has no unchecked Valid Spaces
-		//3. the Pieces that are checking the King are not Checked
-
-		bool chance = true;
-
-		string PiecePos = "  ";
-		PiecePos[1] = this->y + '1';
-		PiecePos[0] = this->x + 'a';
-
-		//Getting all valid spaces of the king
-		string isvalidSpace = "  ";
-		vector<string> validSpaces;
-		for (int k = -1; k < 2; k++)
-			for (int j = -1; j < 2; j++)
-			{
-				isvalidSpace[1] = PiecePos[1] + k;
-				isvalidSpace[0] = PiecePos[0] + j;
-
-				//checking if space is in bounds and if it can be moved to
-				if (validPosition(isvalidSpace) && validMoves(isvalidSpace))//, name))
-				{
-					validSpaces.push_back(isvalidSpace);
-				}
-			}
-
-
-		//Checking if the King is checked
-		if (isChecked())
-		{
-			for (int i = 0; i < 8; i++)
-			{
-				for (int j = 0; j < 8; j++)
-				{
-
-					//if the pieces have the same colour, it continues to the next piece on the board
-					if (board[i][j] == NULL || name[0] == board[i][j]->name[0])
-						continue;
-
-					//This is to check if there is more than one piece checking the king
-					if (board[i][j]->isChecked() && chance && board[i][j]->validMoves(PiecePos))//, board[i][j]->name))
-					{
-						chance = false;
-						continue;
-					}
-
-
-					if (board[i][j]->validMoves(PiecePos))//, board[i][j]->name))
-					{
-						for (int k = 0; k < validSpaces.size(); k++)
-						{
-							//If the move overtakes another piece, it needs to be stored to be undone somehow
-							//Because at this point player's do not exist, this logic needs to be used
-							Pieces* overTaken = board[validSpaces[k][1] - '1'][validSpaces[k][0] - 'a'];
-							if (overTaken != NULL)
-							{
-								overTaken->prevX.push(overTaken->x);
-								overTaken->prevY.push(overTaken->y);
-							}
-
-							move(validSpaces[k]);
-
-							if (!isChecked())
-							{
-								undoMove();
-
-								//Same if as below because return statement cuts it off
-								if (overTaken != NULL)
-									overTaken->undoMove();
-
-								return false;
-							}
-
-							//This undo needs to be done first as it nulls its previous positions
-							//if the overtaken piece's move was undone first, then this undo would make it NULL again
-							undoMove();
-
-							//puts the captured piece back so the board is the same as before.
-							if (overTaken != NULL)
-								overTaken->undoMove();
-						}
-
-						return true;
-					}
-				}
-
-			}
 		}
 
 		return false;
@@ -459,7 +364,7 @@ public:
 				captureMoves.insert(toMove(x + 1, y + 1));
 			}
 
-			if (this->y == 1 && board[y + 2][x] == NULL && !Hpin && !LDpin && !RDpin)//double push so chance to enpassant
+			if (this->y == 1 && board[y + 2][x] == NULL && board[y + 1][x] == NULL && !Hpin && !LDpin && !RDpin)//double push so chance to enpassant
 			{
 				possibleMoves.insert(toMove(x, y + 2));
 				if ((x > 0 && board[y + 2][x - 1] != NULL && board[y + 2][x - 1]->name == "bP") ||
@@ -506,7 +411,7 @@ public:
 				captureMoves.insert(toMove(x + 1, y - 1));
 			}
 
-			if (this->y == 6 && board[y - 2][x] == NULL && !Hpin && !LDpin && !RDpin) {//Double push
+			if (this->y == 6 && board[y - 2][x] == NULL && board[y - 1][x] == NULL && !Hpin && !LDpin && !RDpin) {//Double push
 				possibleMoves.insert(toMove(x, y - 2));
 				if (
 					(x > 0 && board[y - 2][x - 1] != NULL && board[y - 2][x - 1]->name == "wP") ||
@@ -879,7 +784,8 @@ public:
 	void setOpponent(Player& opp);
 
 	bool isChecked() {
-		return !checkedList().empty();
+		list<string> checked = checkedList();
+		return !checked.empty();
 	}
 
 	list<string> checkedList() {//logic for checking if piece checked
@@ -988,7 +894,7 @@ public:
 		if (board[this->y][0] != NULL &&//checking if piece in that location exists
 			board[this->y][0]->name[1] == 'R' && board[this->y][0]->prevX.size() == 1 &&//the square has same coloured unmoved Rook
 			board[this->y][1] == NULL && board[this->y][2] == NULL && board[this->y][3] == NULL &&//empty spaces between left rook and king, filter out by legal moves
-			this->prevX.size() == 1 && this->x == 4)//king has not moved from its own position
+			this->prevX.size() == 1 && this->x == 4 && !isChecked())//king has not moved from its own position
 		{
 			possibleMoves.insert(toMove(this->x - 2, this->y));//Castling possible, write castling logic below
 			castlingFlag = true;
@@ -999,7 +905,7 @@ public:
 			board[this->y][7]->name[1] == 'R' && board[this->y][7]->prevX.size() == 1 &&//the square has same coloured unmoved Rook
 			board[this->y][6] == NULL && //automatically gets catered
 			//>>>>Check after legal move<<<possibleMoves.count(toMove(5, this->y)) && //board[this->y][5] == NULL &&//empty spaces between right rook and king, this caters itself as king in check if this block
-			this->prevX.size() == 1 && this->x == 4)//king has not moved from its own position
+			this->prevX.size() == 1 && this->x == 4 && !isChecked())//king has not moved from its own position
 		{
 			possibleMoves.insert(toMove(this->x + 2, this->y));//Castling possible, write castling logic below
 			castlingFlag = true;
@@ -1053,13 +959,20 @@ public:
 
 //Module 2-Player
 class Player {
-	bool isWhite, isChecked;
+	bool isWhite, isChecked, AI;
 	list<Pieces*> pieces;
 	//These are the pieces that have been moved/captured
 	stack<Pieces*> movedPieces;
 	King* king;
 	int counter;
 public:
+	void setAI(bool val) {
+		AI = val;
+	}
+
+	bool isAI() {
+		return AI;
+	}
 
 	void setCheck(bool check){
 		isChecked = check;
@@ -1073,7 +986,7 @@ public:
 		return king;
 	}
 
-	Player(bool isWhite) : isWhite(isWhite), isChecked(false) {
+	Player(bool isWhite) : isWhite(isWhite), isChecked(false), AI(false) {
 		//The counter keeps track of how many undo's the player can do
 		counter = 0;
 
@@ -1458,6 +1371,12 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		}
 	}
 
+	if (A.isAI()) {
+		cout << "AI making move...\n";
+		AITurn(A, movesInCheck);
+		return 0;
+	}
+
 	cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
 	do
 	{
@@ -1487,6 +1406,8 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			//Undo for the Opponent
 			A.undo();
 			B.undo();
+
+			A.setCheck(false);
 		}
 
 		else
@@ -1562,6 +1483,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 
 			//Promotion in case it happens
 			A.Promotion(board[p2[1] - '1'][p2[0] - 'a']);
+			A.setCheck(false);
 		}
 		else
 		{
@@ -1575,25 +1497,59 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	return 0;
 }
 
-void AITurn(Player& AI)
+void AITurn(Player& AI, map<Pieces*, unordered_set<string>>& inCheck)
 {
 	//making it do a random move
 	//generating pseudo-legal moves
-	list<Pieces*>::iterator p = AI.getPieces().begin();
+	srand((unsigned)time(NULL));
+	list<Pieces*> allPieces = AI.getPieces();
+	int pieceNo = rand() % allPieces.size();
+	Pieces* selPiece = NULL;
+	unordered_set<string> pieceMoves;
+	int counter = 0;//selecting piece
 
-	/*for (string move : (*p)->pseudoLegalMoves())
-		cout << move << " ";*/
-		/*while (p != AI.getPieces().end()) {
-			/*if (rand() % 12 == 0)
+	if (AI.Checked()) {
+		pieceNo = rand() % inCheck.size();
+		for (auto i = inCheck.begin(); i != inCheck.end(); counter++, i++)
+			if (counter == pieceNo)
+			{
+				selPiece = (*i).first;
+				pieceMoves = (*i).second;
 				break;
-		}*/
+			}
+		AI.setCheck(false);
+	}
+	
+	else {
 
+		for (auto i = allPieces.begin(); i != allPieces.end(); counter++) {
+			if (counter == pieceNo) {
+				pieceMoves = (*i)->pseudoLegalMoves();
+				if (!pieceMoves.empty() && pieceMoves.size() != 0)
+				{
+					selPiece = *i;
+					break;
+				}
+				pieceNo = rand() % allPieces.size();
+				counter = 0;
+				i = allPieces.begin();
+			}
+			else
+				i++;
+		}
+	}
+
+	counter = 0;
+	int randMove = rand() % pieceMoves.size();
+	for (auto i = pieceMoves.begin(); i != pieceMoves.end(); i++, counter++)
+		if (counter == randMove)
+			selPiece->move(*i);
 }
 
-void vsAIGame()
+/*void vsAIGame()
 {
 	system("CLS");
-	bool isWhite = rand() % 2;
+	bool isWhite = 1;
 	bool CheckRollback = false;
 
 	//0 means the game is going
@@ -1697,43 +1653,6 @@ void vsAIGame()
 			break;
 		}
 
-		//Checking if the Enemy king is Checkmated
-		typename list<Pieces*>::iterator iterPiecesB = B.getPieces().begin();
-		for (int i = 0; i < B.getPieces().size(); i++)
-		{
-			if ((*iterPiecesB)->name[1] == 'K' && (*iterPiecesB)->Checkmate())
-			{
-				cout << "The enemy king has been checkmated" << endl;
-				displayBoard();
-				WinorLose = 1;
-			}
-
-			iterPiecesB++;
-		}
-
-		//Finding the King in the Player's pieces
-		typename list<Pieces*>::iterator iterPieces = A.getPieces().begin();
-		for (int i = 0; i < A.getPieces().size(); i++)
-		{
-			if ((*iterPieces)->name[1] == 'K')
-			{
-				//if it's checked, undoing the player's last move
-				if ((*iterPieces)->isChecked())
-				{
-					A.undo();
-					B.undo();
-
-					system("CLS");
-					CheckRollback = true;
-					cout << endl << "Your King is Checked. You cannot make that move." << endl << endl;
-				}
-				else
-					break;
-			}
-
-			iterPieces++;
-		}
-
 		//return to the Player's turn if it's king was checked because of the last move.
 		if (CheckRollback)
 		{
@@ -1744,7 +1663,7 @@ void vsAIGame()
 		//AI's turn
 		while (true)
 		{
-
+			AITurn(B);
 			//Stuff added down here
 
 			//B.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
@@ -1762,9 +1681,9 @@ void vsAIGame()
 		cout << endl << "Sorry, the AI has won the game!";
 
 	_getch();
-}
+}*/
 
-void vsPlayerGame()
+void vsPlayerGame(bool isAI)
 {
 	system("CLS");
 	bool isWhite = 1;// rand() % 2;
@@ -1775,6 +1694,8 @@ void vsPlayerGame()
 	Player A(isWhite);
 	Player B(!isWhite);
 
+	if (isAI)
+		B.setAI(true);
 	//>>>>Setting player's kings with the data they require<<<<
 	A.getKing()->setOpponent(B);
 	B.getKing()->setOpponent(A);//king needs opponent pieces potential moves
@@ -1838,10 +1759,10 @@ int main() {
 		switch (choice)
 		{
 		case 1:
-			vsAIGame();
+			vsPlayerGame(true);
 			break;
 		case 2:
-			vsPlayerGame();
+			vsPlayerGame(false);
 			break;
 		case 3:
 			break;
