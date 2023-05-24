@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <math.h>
 #include <conio.h>
-#include <unordered_set>
+#include <set>
 #include <map>
 
 using namespace std;
@@ -16,7 +16,7 @@ int* decodePosition(string pos);
 bool validPosition(string Space);
 string toMove(int, int);
 void displayBoard();
-void AITurn(Player&, map<Pieces*, unordered_set<string>>&);
+void AITurn(Player&, map<Pieces*, set<string>>&);
 //call capture logic when a piece is captured like we did for enpassant
 //all directions based on black side
 //make capture Moves a priority Queue for AI
@@ -25,7 +25,7 @@ void AITurn(Player&, map<Pieces*, unordered_set<string>>&);
 //Add Protected Logic whenever a capture move is made (do in capture function in ease)
 //make a function isWhite in Pieces class to make code more readable
 //may use regex to make searching faster and easier
-//change count with find as find has O(log n) complexity in comparison to O(n) complexity for count in unordered_set
+//change count with find as find has O(log n) complexity in comparison to O(n) complexity for count in set
 
 bool Enpassant = false;
 Pieces* getEnPassant = NULL;
@@ -42,8 +42,9 @@ public:
 	string name;
 	stack<int> prevX;
 	stack<int> prevY;
-	unordered_set<string> possibleMoves;//listing all the possible moves possible by a certain piece
-	unordered_set<string> captureMoves;//lists all the possible pieces current piece can capture
+	set<string> possibleMoves;//listing all the possible moves possible by a certain piece
+	set<string> captureMoves;//lists all the possible pieces current piece can capture
+	set<string> bestMoves;
 	Pieces() :x(0), y(0), value(0), name("NULL") {}
 	Pieces(string pos, string name, int value) :x(pos[0] - 'a'), y(pos[1] - '1'), value(value), name(name) {
 		board[y][x] = this;
@@ -341,16 +342,16 @@ public:
 		return diagonalThreat && kingInDiagonal;
 	}
 
-	virtual unordered_set<string> pseudoLegalMoves() = 0;
+	virtual set<string> pseudoLegalMoves() = 0;
 
 };
 
 class Pawn :public Pieces {
 public:
 	Pawn(string pos, string color) :Pieces(pos, color + "P", 10) {}
-	//list<string> possibleMoves;//will move this into pieces later as a unordered_set, as two pieces can never have the same start pos but can have same end pos
+	//list<string> possibleMoves;//will move this into pieces later as a set, as two pieces can never have the same start pos but can have same end pos
 
-	unordered_set<string> pseudoLegalMoves() {//generating a rough lookup-table
+	set<string> pseudoLegalMoves() {//generating a rough lookup-table
 		resetMoves();
 		//for white
 		bool Hpin = horizontalPin();
@@ -458,12 +459,13 @@ public:
 class Knight :public Pieces {
 public:
 	Knight(string pos, string color) :Pieces(pos, color + "N", 30) {}
-	bool pin = horizontalPin() && verticalPin() && leftDiagonalPin() && rightDiagonalPin();
+
 	//if horse pinned it cannot moved anywhere
-	unordered_set<string> pseudoLegalMoves() {
+	set<string> pseudoLegalMoves() {
 		resetMoves();
 		//moving like an octopus smh
 		//--|
+		bool pin = horizontalPin() && verticalPin() && leftDiagonalPin() && rightDiagonalPin();
 		if (pin)//return empty set as horse has no valid moves
 			return possibleMoves;
 
@@ -539,7 +541,7 @@ public:
 		cout << "Imma Bishop";
 	}
 
-	unordered_set<string> pseudoLegalMoves() {
+	set<string> pseudoLegalMoves() {
 		bool Hpin = horizontalPin();
 		bool Vpin = verticalPin();
 		bool LDpin = leftDiagonalPin();
@@ -623,7 +625,7 @@ public:
 		cout << "Imma Rookzzz";
 	}
 
-	unordered_set<string> pseudoLegalMoves() {
+	set<string> pseudoLegalMoves() {
 		bool Hpin = horizontalPin();
 		bool Vpin = verticalPin();
 		bool LDpin = leftDiagonalPin();
@@ -700,14 +702,14 @@ class Queen :public Pieces {
 public:
 	Queen(string pos, string color) :Pieces(pos, color + "Q", 90) {}
 
-	unordered_set<string> pseudoLegalMoves() {
+	set<string> pseudoLegalMoves() {
 		resetMoves();
 		Bishop bisMoves = *((Bishop*)this);
 		Rook rookMoves = *((Rook*)this);
 
-		unordered_set<string> diagonals = bisMoves.pseudoLegalMoves();//downcasting piece as bishop and storing its possible moves
+		set<string> diagonals = bisMoves.pseudoLegalMoves();//downcasting piece as bishop and storing its possible moves
 		possibleMoves = rookMoves.pseudoLegalMoves();//downcasting piece as rook and storing its possible moves
-		unordered_set<string> diagonalCapture = bisMoves.captureMoves;
+		set<string> diagonalCapture = bisMoves.captureMoves;
 		captureMoves = rookMoves.captureMoves;
 
 		//both above functions clear the possibleMoves list by default so hence need to save in seperate variables
@@ -866,7 +868,7 @@ public:
 
 	}
 
-	unordered_set<string> pseudoLegalMoves(){
+	set<string> pseudoLegalMoves(){
 		resetMoves();
 		bool castlingFlag = false;
 		castling = 0;
@@ -924,7 +926,7 @@ public:
 		if (kingToMove == this->name)//filtering so king only has legal moves.
 		{
 			legalMoves();
-			unordered_set<string> tempCopy(possibleMoves);
+			set<string> tempCopy(possibleMoves);
 			for (string moves : possibleMoves) {
 				int* coord = decodePosition(moves);
 				if (board[coord[1]][coord[0]] != NULL && board[coord[1]][coord[0]]->name[0] != this->name[0])
@@ -942,7 +944,7 @@ public:
 				castling = 1;
 				//board[this->y][7]->move(toMove(5, this->y));//put this logic somewhere else
 			else {
-				unordered_set<string>::iterator cond2 = possibleMoves.find(toMove(6, this->y));
+				set<string>::iterator cond2 = possibleMoves.find(toMove(6, this->y));
 				if (cond2 != possibleMoves.end())
 					possibleMoves.erase(cond2);
 			}
@@ -951,7 +953,7 @@ public:
 				//board[this->y][0]->move(toMove(3, this->y));
 
 			else{//otherwise removing the moves from the legal moves entirely
-				unordered_set<string>::iterator cond1 = possibleMoves.find(toMove(2, this->y));
+				set<string>::iterator cond1 = possibleMoves.find(toMove(2, this->y));
 				if (cond1 != possibleMoves.end())
 					possibleMoves.erase(cond1);
 			}
@@ -1020,7 +1022,7 @@ public:
 		}
 		pieces.push_back(king);
 		//placing pawns
-		for (char i = 'a'; i < 'i'; i++)
+		/*for (char i = 'a'; i < 'i'; i++)
 		{
 			if (isWhite)
 				pieces.push_back(new Pawn(string(1, i) + "2", "w"));
@@ -1046,16 +1048,12 @@ public:
 			pieces.push_back(new Knight("b8", "b"));
 			pieces.push_back(new Rook("a8", "b"));
 			pieces.push_back(new Rook("h8", "b"));
-		}
+		}*/
 
 		//>>>>Add pieces here<<<<
-		/*pieces.push_back(new Pawn("e4", "b"));
-		pieces.push_back(new Pawn("b7", "b"));
-		pieces.push_back(new Pawn("f2", "w"));
-		pieces.push_back(new Pawn("c5", "w"));
 
 		//DO NOT DEFINE KING HERE AS IT IS BEING IMPLICITY MADE WHEN PLAYER CREATED
-		/*if (isWhite) {
+		if (isWhite) {
 			//Checkmate
 			//pieces.push_back(new Rook("a7", "w"));
 			//pieces.push_back(new Queen("d4", "w"));
@@ -1066,24 +1064,25 @@ public:
 			pieces.push_back(new Pawn("d6", "w"));
 			//pieces.push_back(new Rook("e2", "w"));
 			pieces.push_back(new Queen("d2", "w"));
-			pieces.push_back(new Bishop("g6", "w"));*/
-			/*pieces.push_back(new Pawn("a7", "w"));
+			pieces.push_back(new Bishop("g6", "w"));
+			pieces.push_back(new Pawn("a7", "w"));*/
+			pieces.push_back(new Knight("a7", "w"));
 		}
 		else {
 			//checkMate
 			//pieces.push_back(new Pawn("e4", "b"));
 			//pieces.push_back(new Pawn("b7", "b"));
-			/*pieces.push_back(new Rook("a2", "b"));
-			pieces.push_back(new Rook("h8", "b"));
+			//pieces.push_back(new Rook("a2", "b"));
+			//pieces.push_back(new Rook("h8", "b"));
 			pieces.push_back(new Knight("g3", "b"));
 			//Pins
 			//pieces.push_back(new Queen("e7", "b"));
-			pieces.push_back(new Pawn("g2", "b"));
+			/*pieces.push_back(new Pawn("g2", "b"));
 			pieces.push_back(new Rook("h1", "b"));
 			pieces.push_back(new Pawn("f7", "b"));
 			pieces.push_back(new Bishop("g5", "b"));
-			pieces.push_back(new Pawn("h7", "b"));
-		}*/
+			pieces.push_back(new Pawn("h7", "b"));*/
+		}
 	}
 
 	list<Pieces*>& getPieces() {
@@ -1128,9 +1127,9 @@ public:
 		this->pushPiece(piece);
 	}
 
-	map<Pieces*, unordered_set<string>> LegalMovesInCheck() {//>>>>Avoding checkmate logic here, user only allowed to make these moves
+	map<Pieces*, set<string>> LegalMovesInCheck() {//>>>>Avoding checkmate logic here, user only allowed to make these moves
 		//atm just generating the kingMoves
-		map<Pieces*, unordered_set<string>> movesInCheck;
+		map<Pieces*, set<string>> movesInCheck;
 		kingToMove = king->name;
 		king->pseudoLegalMoves();
 		if (!king->possibleMoves.empty())
@@ -1183,7 +1182,7 @@ public:
 			if (p->name[1] == 'K')
 				continue;
 			p->pseudoLegalMoves();
-			unordered_set<string> blockingMoves;
+			set<string> blockingMoves;
 			for (string threatSpace : danger) {
 				if (p->possibleMoves.find(threatSpace) != p->possibleMoves.end())
 					blockingMoves.insert(threatSpace);
@@ -1367,7 +1366,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	string p1, p2;
 	bool CheckRollback = false;
 	displayBoard();
-	map<Pieces*, unordered_set<string>> movesInCheck;
+	map<Pieces*, set<string>> movesInCheck;
 	Pieces* pieceSelected = NULL;
 	A.setPieces();
 
@@ -1521,7 +1520,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	return 0;
 }
 
-void AITurn(Player& AI, map<Pieces*, unordered_set<string>>& inCheck)
+void AITurn(Player& AI, map<Pieces*, set<string>>& inCheck)
 {
 	//making it do a random move
 	//generating pseudo-legal moves
@@ -1530,8 +1529,8 @@ void AITurn(Player& AI, map<Pieces*, unordered_set<string>>& inCheck)
 	int pieceNo = rand() % allPieces.size();
 	Pieces* selPiece = NULL;
 	Pieces* backup = NULL;
-	unordered_set<string> backupMoves;
-	unordered_set<string> pieceMoves;
+	set<string> backupMoves;
+	set<string> pieceMoves;
 	int counter = 0;//selecting piece
 
 	if (AI.Checked()) {
