@@ -26,7 +26,6 @@ void AITurn(Player&, map<Pieces*, unordered_set<string>>&);
 //make a function isWhite in Pieces class to make code more readable
 //may use regex to make searching faster and easier
 //change count with find as find has O(log n) complexity in comparison to O(n) complexity for count in unordered_set
-//Horse L not counted as check 2 down 1 left for AI
 
 bool Enpassant = false;
 Pieces* getEnPassant = NULL;
@@ -115,7 +114,10 @@ public:
 		{
 			if ((pos == toMove(getEnPassant->x, getEnPassant->y - 1) && getEnPassant->name[0] == 'w') ||
 				(pos == toMove(getEnPassant->x, getEnPassant->y + 1) && getEnPassant->name[0] == 'b'))
-				board[getEnPassant->y][getEnPassant->x] = NULL;
+			{
+				Pieces* capturedPiece = board[getEnPassant->y][getEnPassant->x];
+				capturedPiece->name = "\0";
+			}
 			getEnPassant = NULL;
 
 		}
@@ -133,6 +135,11 @@ public:
 				castling = 0;
 				board[this->y][0]->move(toMove(3, this->y));
 			}
+		}
+
+		if (board[pos[1] - '1'][pos[0] - 'a'] != NULL) {
+			Pieces* capturedPiece = board[pos[1] - '1'][pos[0] - 'a'];
+			capturedPiece->name = "\0";
 		}
 
 		system("pause");
@@ -966,6 +973,15 @@ class Player {
 	King* king;
 	int counter;
 public:
+	void setPieces() {
+		for (auto i = pieces.begin(); i != pieces.end();) {
+			if ((*i)->name == "\0")
+				pieces.erase(i++);
+			else
+				++i;
+		}
+	}
+
 	void setAI(bool val) {
 		AI = val;
 	}
@@ -1023,8 +1039,6 @@ public:
 		}
 
 		else {
-
-			//pieces.push_back(new Pawn("d3", "b"));
 			pieces.push_back(new Queen("d8", "b"));
 			pieces.push_back(new Bishop("c8", "b"));
 			pieces.push_back(new Bishop("f8", "b"));
@@ -1038,7 +1052,7 @@ public:
 		/*pieces.push_back(new Pawn("e4", "b"));
 		pieces.push_back(new Pawn("b7", "b"));
 		pieces.push_back(new Pawn("f2", "w"));
-		pieces.push_back(new Pawn("c5", "w"));*/
+		pieces.push_back(new Pawn("c5", "w"));
 
 		//DO NOT DEFINE KING HERE AS IT IS BEING IMPLICITY MADE WHEN PLAYER CREATED
 		/*if (isWhite) {
@@ -1048,17 +1062,18 @@ public:
 			//pieces.push_back(new Pawn("f2", "w"));
 			//pieces.push_back(new Pawn("c5", "w"));
 			//Pins
-			pieces.push_back(new Queen("f1", "w"));
+			/*pieces.push_back(new Queen("f1", "w"));
 			pieces.push_back(new Pawn("d6", "w"));
 			//pieces.push_back(new Rook("e2", "w"));
 			pieces.push_back(new Queen("d2", "w"));
-			pieces.push_back(new Bishop("g6", "w"));
+			pieces.push_back(new Bishop("g6", "w"));*/
+			/*pieces.push_back(new Pawn("a7", "w"));
 		}
 		else {
 			//checkMate
 			//pieces.push_back(new Pawn("e4", "b"));
 			//pieces.push_back(new Pawn("b7", "b"));
-			pieces.push_back(new Rook("a2", "b"));
+			/*pieces.push_back(new Rook("a2", "b"));
 			pieces.push_back(new Rook("h8", "b"));
 			pieces.push_back(new Knight("g3", "b"));
 			//Pins
@@ -1067,6 +1082,7 @@ public:
 			pieces.push_back(new Rook("h1", "b"));
 			pieces.push_back(new Pawn("f7", "b"));
 			pieces.push_back(new Bishop("g5", "b"));
+			pieces.push_back(new Pawn("h7", "b"));
 		}*/
 	}
 
@@ -1162,6 +1178,8 @@ public:
 		
 		//generating all possible moves for all pieces and comparing it with moves in danger
 		for (Pieces* p : pieces) {
+			if (p == NULL)
+				continue;
 			if (p->name[1] == 'K')
 				continue;
 			p->pseudoLegalMoves();
@@ -1194,6 +1212,12 @@ public:
 			piecePosition[1] = piece->y + '1';
 
 			Captured(piece);
+
+			if (isAI()) {
+				pieces.push_back(new Queen(piecePosition, string(1, piece->name[0])));
+				counter = 0;
+				return;
+			}
 
 			cout << "\n\n";
 			cout << "What would you like to promote your pawn into?\n";
@@ -1232,7 +1256,6 @@ void King::legalMoves() {//>>>Can be made more efficient by only going through t
 	//possibleMoves = pseudoLegalMoves(toMove(this->x, this->y));
 	board[this->y][this->x] = NULL;//so the king is no longer in the "ray" of the attacking piece
 	for (Pieces* piece : opponent->getPieces()) {//Error here ://////
-		
 		//PAWN HAS DIFFERENT ATTACK PATTERN
 		if (piece->name[1] == 'P') {
 			piece->resetMoves();
@@ -1346,6 +1369,14 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	displayBoard();
 	map<Pieces*, unordered_set<string>> movesInCheck;
 	Pieces* pieceSelected = NULL;
+	A.setPieces();
+
+	cout << A.getPieces().size() << endl;
+	if (A.getPieces().size() == 1 && B.getPieces().size() == 1) {
+		cout << "Stalemate\n";
+		WinorLose = 3;
+		return 1;
+	}
 
 	if (A.getKing()->isChecked()) {
 		movesInCheck = A.LegalMovesInCheck();
@@ -1358,6 +1389,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 				WinorLose = 1;
 			return 1;
 		}
+
 		//add player losing logic here
 		else {
 			A.setCheck(true);
@@ -1442,19 +1474,17 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		int* selectedPiecePos = decodePosition(p1);
 		pieceSelected = board[selectedPiecePos[1]][selectedPiecePos[0]];
 
-		do
-		{
-			cout << "Enter move: ";
-			cin >> p2;
-			if (validPosition(p2) && A.Checked() && !movesInCheck.empty()) {
-				int* boardPos = decodePosition(p2);
-				if (movesInCheck[pieceSelected].find(p2) == movesInCheck[pieceSelected].end())//only play valid move in check
-				{
-					cout << "Invalid Move, you are currently in check" << endl;
-					p2 = "999";
-				}
+		
+		cout << "Enter move: ";
+		cin >> p2;
+		if (validPosition(p2) && A.Checked() && !movesInCheck.empty()) {
+			int* boardPos = decodePosition(p2);
+			if (movesInCheck[pieceSelected].find(p2) == movesInCheck[pieceSelected].end())//only play valid move in check
+			{
+				cout << "Invalid Move, you are currently in check" << endl;
+				continue;
 			}
-		} while (!validPosition(p2));
+		}
 
 
 		if (board[p1[1] - '1'][p1[0] - 'a']->validMoves(p2))//, board[p1[1] - '1'][p1[0] - 'a']->name))
@@ -1463,12 +1493,6 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			if (board[p2[1] - '1'][p2[0] - 'a'] != NULL)
 				B.Captured(board[p2[1] - '1'][p2[0] - 'a']);
 
-			//En Passant requires this in order to work. Must be repeated for the opponent
-			//In case they use en passant as well
-			else if (Enpassant && isWhite)
-				B.Captured(board[p2[1] - '1' - 1][p2[0] - 'a']);
-			else if (Enpassant)
-				B.Captured(board[p2[1] - '1' + 1][p2[0] - 'a']);
 			//Adding in NULL to make sure Undo's work properly
 			else
 				B.pushPiece(NULL);
@@ -1505,6 +1529,8 @@ void AITurn(Player& AI, map<Pieces*, unordered_set<string>>& inCheck)
 	list<Pieces*> allPieces = AI.getPieces();
 	int pieceNo = rand() % allPieces.size();
 	Pieces* selPiece = NULL;
+	Pieces* backup = NULL;
+	unordered_set<string> backupMoves;
 	unordered_set<string> pieceMoves;
 	int counter = 0;//selecting piece
 
@@ -1521,169 +1547,62 @@ void AITurn(Player& AI, map<Pieces*, unordered_set<string>>& inCheck)
 	}
 	
 	else {
-
 		for (auto i = allPieces.begin(); i != allPieces.end(); counter++) {
-			if (counter == pieceNo) {
+			/*if (counter == pieceNo) {
 				pieceMoves = (*i)->pseudoLegalMoves();
-				if (!pieceMoves.empty() && pieceMoves.size() != 0)
+
+				if (pieceMoves.size() == 0)
+					cout << selPiece;
+				if (!pieceMoves.empty())
 				{
 					selPiece = *i;
 					break;
 				}
 				pieceNo = rand() % allPieces.size();
-				counter = 0;
+				counter = -1;
+				i = allPieces.begin();*/
+			pieceMoves = (*i)->pseudoLegalMoves();
+			if (!(*i)->captureMoves.empty()){
+				selPiece = *i;
+				pieceMoves = (*i)->captureMoves;
+				break;
+			}
+
+			else if (counter == pieceNo) {
+				//pieceMoves = (*i)->pseudoLegalMoves();
+				if (!pieceMoves.empty())
+				{
+					backupMoves = pieceMoves;
+					backup = *i;
+					continue;
+				}
+				pieceNo = rand() % allPieces.size();
+				counter = -1;
 				i = allPieces.begin();
 			}
+
 			else
 				i++;
 		}
+	}
+
+	if (selPiece == NULL)
+	{
+		selPiece = backup;
+		pieceMoves = backupMoves;
 	}
 
 	counter = 0;
 	int randMove = rand() % pieceMoves.size();
 	for (auto i = pieceMoves.begin(); i != pieceMoves.end(); i++, counter++)
 		if (counter == randMove)
+		{
 			selPiece->move(*i);
+			AI.Promotion(board[(*i)[1] - '1'][(*i)[0] - 'a']);
+		}
 }
 
-/*void vsAIGame()
-{
-	system("CLS");
-	bool isWhite = 1;
-	bool CheckRollback = false;
-
-	//0 means the game is going
-	//1 means you won
-	//2 means you lost
-	int WinorLose = 0;
-
-	if (isWhite)
-		cout << "You are the White Player." << endl;
-	else
-		cout << "You are the Black Player." << endl;
-
-	//The user will always be Player A
-	Player A(isWhite);
-	Player B(!isWhite);
-
-	//Main gameplay loop is here
-	do {
-		string p1, p2;
-		displayBoard();
-
-		cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
-		do
-		{
-			cin >> p1;
-		} while (p1 != "1" && p1 != "2" && p1 != "3");
-
-		if (p1 == "3")
-			break;
-
-		if (p1 == "2")
-		{
-			//Undo because of Player
-			A.undo();
-			B.undo();
-
-
-			//Undo for the Opponent
-			//A.undo();
-			//B.undo();
-			system("CLS");
-			continue;
-		}
-
-		//Loop for the player
-		while (true)
-		{
-			//User's turn
-			do
-			{
-				cout << "Enter current position of piece: ";
-				cin >> p1;
-
-			} while (!validPosition(p1));
-
-			//This checks if the piece chosen is actually the player's
-			if (!isvalid(isWhite, p1))
-				continue;
-
-			do
-			{
-				cout << "Enter move: ";
-				cin >> p2;
-
-			} while (!validPosition(p2));
-
-
-			if (board[p1[1] - '1'][p1[0] - 'a']->validMoves(p2))//, board[p1[1] - '1'][p1[0] - 'a']->name))
-			{
-				//Pushing the enemy piece onto the Undo Stack
-				if (board[p2[1] - '1'][p2[0] - 'a'] != NULL)
-					B.Captured(board[p2[1] - '1'][p2[0] - 'a']);
-
-				//En Passant requires this in order to work. Must be repeated for the opponent
-				//In case they use en passant as well
-				else if (Enpassant && isWhite)
-					B.Captured(board[p2[1] - '1' - 1][p2[0] - 'a']);
-				else if (Enpassant)
-					B.Captured(board[p2[1] - '1' + 1][p2[0] - 'a']);
-				//Adding in NULL to make sure Undo's work properly
-				else
-					B.pushPiece(NULL);
-				Enpassant = false;
-
-
-				//Pushing previous Piece and moving it
-				A.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
-
-				//Moving the piece on the board
-				board[p1[1] - '1'][p1[0] - 'a']->move(p2);
-
-				//Promotion in case it happens
-				A.Promotion(board[p2[1] - '1'][p2[0] - 'a']);
-			}
-			else
-			{
-				cout << "Invalid Move" << endl;
-				continue;
-			}
-
-			break;
-		}
-
-		//return to the Player's turn if it's king was checked because of the last move.
-		if (CheckRollback)
-		{
-			CheckRollback = false;
-			continue;
-		}
-
-		//AI's turn
-		while (true)
-		{
-			AITurn(B);
-			//Stuff added down here
-
-			//B.pushPiece(board[p1[1] - '1'][p1[0] - 'a']);
-			//board[p1[1] - '1'][p1[0] - 'a']->move(p2);
-			//system("CLS");
-			break;
-		}
-
-	} while (WinorLose == 0);
-
-
-	if (WinorLose == 1)
-		cout << endl << "Congratulations! You've won the game!";
-	else
-		cout << endl << "Sorry, the AI has won the game!";
-
-	_getch();
-}*/
-
-void vsPlayerGame(bool isAI)
+void vsPlayerGame(bool AisAI, bool BisAI)
 {
 	system("CLS");
 	bool isWhite = 1;// rand() % 2;
@@ -1694,8 +1613,11 @@ void vsPlayerGame(bool isAI)
 	Player A(isWhite);
 	Player B(!isWhite);
 
-	if (isAI)
+	if (AisAI)
+		A.setAI(true);
+	if (BisAI)
 		B.setAI(true);
+
 	//>>>>Setting player's kings with the data they require<<<<
 	A.getKing()->setOpponent(B);
 	B.getKing()->setOpponent(A);//king needs opponent pieces potential moves
@@ -1751,24 +1673,27 @@ int main() {
 		int choice = 0;
 		cout << "\t\t         CHESS" << endl;
 		cout << "\t\tWhat kind of game would you like to play?" << endl;
-		cout << "\t\t1. vs AI" << endl << "\t\t2. vs Player" << endl << "\t\t3.Quit" << endl;
+		cout << "\t\t1. vs AI" << endl << "\t\t2. vs Player" << endl << "\t\t3. AIvsAI"  << endl << "\t\t4.Quit" << endl;
 		cout << "\t\tYour choice: ";
-		while (choice != 1 && choice != 2 && choice != 3)
+		while (choice < 1 || choice > 4)
 			cin >> choice;
 
 		switch (choice)
 		{
 		case 1:
-			vsPlayerGame(true);
+			vsPlayerGame(false, true);
 			break;
 		case 2:
-			vsPlayerGame(false);
+			vsPlayerGame(false, false);
 			break;
 		case 3:
+			vsPlayerGame(true, true);
+			break;
+		case 4:
 			break;
 		}
 
-		if (choice == 3)
+		if (choice == 4)
 			break;
 	}
 	return 0;
