@@ -7,6 +7,9 @@
 #include <conio.h>
 #include <set>
 #include <map>
+#include <cmath>
+#include <queue>
+#include <compare>
 
 using namespace std;
 class Pieces;
@@ -16,16 +19,36 @@ int* decodePosition(string pos);
 bool validPosition(string Space);
 string toMove(int, int);
 void displayBoard();
-void AITurn(Player&, map<Pieces*, set<string>>&);
+void AITurn(Player&, map<Pieces*, set<string>>&, int&);
+
+struct Moves {
+	int value;
+	string move;
+
+	Moves(string move, int value) : value(value), move(move) {}
+
+	bool operator < (const Moves& alt) const {
+		//cout << value << " & " << alt.value << endl;
+		return this->value < alt.value;
+	}
+
+	bool operator <= (const Moves& alt) const {
+		//cout << value << " & " << alt.value << endl;
+		return this->value <= alt.value;
+	}
+
+	bool operator > (const Moves& alt) const {
+		//cout << value << " & " << alt.value << endl;
+		return this->value > alt.value;
+	}
+
+	Moves(): value(-1),move("NULL") {}
+};
 //call capture logic when a piece is captured like we did for enpassant
 //all directions based on black side
 //make capture Moves a priority Queue for AI
 //Add the checkmate lose condition
-//No castling in check rule :/
-//Add Protected Logic whenever a capture move is made (do in capture function in ease)
-//make a function isWhite in Pieces class to make code more readable
 //may use regex to make searching faster and easier
-//change count with find as find has O(log n) complexity in comparison to O(n) complexity for count in set
 
 bool Enpassant = false;
 Pieces* getEnPassant = NULL;
@@ -44,7 +67,7 @@ public:
 	stack<int> prevY;
 	set<string> possibleMoves;//listing all the possible moves possible by a certain piece
 	set<string> captureMoves;//lists all the possible pieces current piece can capture
-	set<string> bestMoves;
+	priority_queue<Moves> bestMoves;
 	Pieces() :x(0), y(0), value(0), name("NULL") {}
 	Pieces(string pos, string name, int value) :x(pos[0] - 'a'), y(pos[1] - '1'), value(value), name(name) {
 		board[y][x] = this;
@@ -55,30 +78,17 @@ public:
 	}
 	//string validCastling[4] = {"g8", "g1", "c8", "c1"};
 
-	//Used to see if a certain piece can be captured by another Piece
-	bool isChecked() {
-		string PiecePos = "  ";
-		PiecePos[1] = this->y + '1';
-		PiecePos[0] = this->x + 'a';
+	bool isWhite() {
+		return name[0] == 'w';
+	}
 
-		for (int i = 0; i < 8; i++)
-		{
-			for (int j = 0; j < 8; j++)
-			{
-				//if the pieces have the same colour, it continues to the next piece on the board
-				if (board[i][j] == NULL || name[0] == board[i][j]->name[0])
-					continue;
-
-				if ((board[i][j])->validMoves(PiecePos))//, (board[i][j])->name))
-					return true;
-			}
-
-		}
-
-		return false;
+	bool isOpponent(Pieces &Opp) {
+		return name[0] != Opp.name[0];
 	}
 
 	void resetMoves() {
+		while (!bestMoves.empty())
+			bestMoves.pop();
 		possibleMoves.clear();
 		captureMoves.clear();
 	}
@@ -105,7 +115,7 @@ public:
 		//	cout << move << " ";
 
 		if (getEnPassant != NULL && getEnPassant == this && (//for enPassant
-			(toMove(x, y + 2) != pos && this->name[0] == 'w') ||
+			(toMove(x, y + 2) != pos && this->isWhite()) ||
 			(toMove(x, y - 2) != pos && this->name[0] == 'b')
 			)) {
 			getEnPassant = NULL;
@@ -113,7 +123,7 @@ public:
 
 		if (checkEnPassant == getEnPassant && getEnPassant != NULL)//may have sm bugs but idk not gonna deep test dis
 		{
-			if ((pos == toMove(getEnPassant->x, getEnPassant->y - 1) && getEnPassant->name[0] == 'w') ||
+			if ((pos == toMove(getEnPassant->x, getEnPassant->y - 1) && getEnPassant->isWhite()) ||
 				(pos == toMove(getEnPassant->x, getEnPassant->y + 1) && getEnPassant->name[0] == 'b'))
 			{
 				Pieces* capturedPiece = board[getEnPassant->y][getEnPassant->x];
@@ -138,12 +148,13 @@ public:
 			}
 		}
 
+
 		if (board[pos[1] - '1'][pos[0] - 'a'] != NULL) {
 			Pieces* capturedPiece = board[pos[1] - '1'][pos[0] - 'a'];
 			capturedPiece->name = "\0";
 		}
 
-		system("pause");
+		//system("pause");
 		prevX.push(x);
 		prevY.push(y);
 
@@ -180,13 +191,13 @@ public:
 		int rank = this->y;
 		for (int i = rank - 1; i >= 0; i--)
 			if (board[i][file] != NULL) {
-				if (board[i][file]->name[0] == this->name[0]) {//checking if king in file
+				if (!board[i][file]->isOpponent(*this)) {//checking if king in file
 					if (board[i][file]->name[1] == 'K')
 						kingInFile = true;
 					break;
 				}
 				else {
-					if (board[i][file]->name[1] == 'Q' || board[i][file]->name[1] == 'R')
+					if (!board[i][file]->name[1] == 'Q' || board[i][file]->name[1] == 'R')
 						threatInFile = true;
 					break;
 				}
@@ -194,7 +205,7 @@ public:
 
 		for (int i = rank + 1; i < 8; i++)//finding king
 			if (board[i][file] != NULL) {
-				if (board[i][file]->name[0] == this->name[0]) {//checking if king in file
+				if (!board[i][file]->isOpponent(*this)) {//checking if king in file
 					if (board[i][file]->name[1] == 'K')
 						kingInFile = true;
 					break;//if any other white piece in way still should break
@@ -343,12 +354,12 @@ public:
 	}
 
 	virtual set<string> pseudoLegalMoves() = 0;
-
+	virtual Moves BM() = 0; //BestMove
 };
 
 class Pawn :public Pieces {
 public:
-	Pawn(string pos, string color) :Pieces(pos, color + "P", 10) {}
+	Pawn(string pos, string color) :Pieces(pos, color + "P", 45) {}
 	//list<string> possibleMoves;//will move this into pieces later as a set, as two pieces can never have the same start pos but can have same end pos
 
 	set<string> pseudoLegalMoves() {//generating a rough lookup-table
@@ -359,7 +370,7 @@ public:
 		bool LDpin = leftDiagonalPin();
 		bool RDpin = rightDiagonalPin();
 
-		if (name[0] == 'w') {
+		if (isWhite()) {
 			if (x > 0 && y < 7 && board[y + 1][x - 1] != NULL && board[y + 1][x - 1]->name[0] == 'b' && !Vpin && !Hpin && !RDpin)//capture left
 			{
 				possibleMoves.insert(toMove(x - 1, y + 1));
@@ -407,13 +418,13 @@ public:
 			}
 		}
 		else {
-			if (x > 0 && y > 0 && board[y - 1][x - 1] != NULL && board[y - 1][x - 1]->name[0] == 'w' && !Vpin && !Hpin && !LDpin)//capture left
+			if (x > 0 && y > 0 && board[y - 1][x - 1] != NULL && board[y - 1][x - 1]->isWhite() && !Vpin && !Hpin && !LDpin)//capture left
 			{
 				possibleMoves.insert(toMove(x - 1, y - 1));
 				captureMoves.insert(toMove(x - 1, y - 1));
 			}
 
-			if (x < 7 && y > 0 && board[y - 1][x + 1] != NULL && board[y - 1][x + 1]->name[0] == 'w' && !Vpin && !Hpin && !RDpin)//capture right
+			if (x < 7 && y > 0 && board[y - 1][x + 1] != NULL && board[y - 1][x + 1]->isWhite() && !Vpin && !Hpin && !RDpin)//capture right
 			{
 				possibleMoves.insert(toMove(x + 1, y - 1));
 				captureMoves.insert(toMove(x + 1, y - 1));
@@ -454,11 +465,62 @@ public:
 		}
 		return possibleMoves;
 	}
+
+	Moves BM() {
+		pseudoLegalMoves();
+		if (possibleMoves.empty()) {
+			return Moves("NULL", -1);
+		}
+		for (string moves : possibleMoves) {
+			int* pos = decodePosition(moves);
+			int attackX = pos[0], attackY = pos[1];
+			if (this->isWhite())
+				attackY += 1;
+			else
+				attackY -= 1;
+			//if (board[attackY][attackX]->value >= this->value)//pawn can capture other pawn
+			if (prevY.size() > 1 && (
+				abs(this->y - 7) == 1 || abs(this->y - 0) == 1))//prefer promotion move
+				bestMoves.push(*(new Moves(moves, 500)));
+
+			if (attackX < 7 && attackY < 7 && attackY > 0 && board[attackY][attackX + 1] != NULL) { //pawn protect and attack right variation
+				if (!board[attackY][attackX + 1]->isOpponent(*this)) {
+					int val = 10;
+					if ((attackY == 4 || attackY == 5) && (attackX == 4 || attackX == 5))
+						val += 5;
+					bestMoves.push(*(new Moves(moves, val)));
+				}
+				else//attacking piece
+					bestMoves.push(*(new Moves(moves, board[attackY][attackX + 1]->value)));
+			}
+
+			if (attackX > 0 && attackY < 7 && attackY > 0 && board[attackY][attackX - 1] != NULL) { //pawn protect and attack right variation
+				if (!board[attackY][attackX - 1]->isOpponent(*this)) {
+					int val = 10;
+					if ((attackY == 4 || attackY == 5) && (attackX == 4 || attackX == 5))
+						val += 5;
+					bestMoves.push(*(new Moves(moves, val)));
+				}
+				else//attacking piece
+					bestMoves.push(*(new Moves(moves, board[attackY][attackX - 1]->value)));
+			}
+
+			else
+				bestMoves.push(*(new Moves(*possibleMoves.begin(), 6)));//so at least there is 1 element in priority queue
+		}
+
+		for (string moves : captureMoves) {
+			int* pos = decodePosition(moves);
+			int attackX = pos[0], attackY = pos[1];
+			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+		}
+		return bestMoves.top();
+	}
 };
 
 class Knight :public Pieces {
 public:
-	Knight(string pos, string color) :Pieces(pos, color + "N", 30) {}
+	Knight(string pos, string color) :Pieces(pos, color + "N", 55) {}
 
 	//if horse pinned it cannot moved anywhere
 	set<string> pseudoLegalMoves() {
@@ -469,76 +531,164 @@ public:
 		if (pin)//return empty set as horse has no valid moves
 			return possibleMoves;
 
-		if (this->x + 2 < 8 && this->y + 1 < 8 && (board[this->y + 1][this->x + 2] == NULL || board[this->y + 1][this->x + 2]->name[0] != this->name[0]))
+		if (this->x + 2 < 8 && this->y + 1 < 8 && (board[this->y + 1][this->x + 2] == NULL || board[this->y + 1][this->x + 2]->isOpponent(*this)))
 		{
 			possibleMoves.insert(toMove(this->x + 2, this->y + 1));
-			if (board[this->y + 1][this->x + 2] != NULL && board[this->y + 1][this->x + 2]->name[0] != this->name[0])
+			if (board[this->y + 1][this->x + 2] != NULL && board[this->y + 1][this->x + 2]->isOpponent(*this))
 				captureMoves.insert(toMove(this->x + 2, this->y + 1));
 		}
-		if (this->x + 2 < 8 && this->y - 1 >= 0 && (board[this->y - 1][this->x + 2] == NULL || board[this->y - 1][this->x + 2]->name[0] != this->name[0]))
+		if (this->x + 2 < 8 && this->y - 1 >= 0 && (board[this->y - 1][this->x + 2] == NULL || board[this->y - 1][this->x + 2]->isOpponent(*this)))
 		{
 			possibleMoves.insert(toMove(this->x + 2, this->y - 1));
-			if (board[this->y - 1][this->x + 2] != NULL && board[this->y - 1][this->x + 2]->name[0] != this->name[0])
+			if (board[this->y - 1][this->x + 2] != NULL && board[this->y - 1][this->x + 2]->isOpponent(*this))
 				captureMoves.insert(toMove(this->x + 2, this->y - 1));
 
 		}
 
 		//|--
-		if (this->x - 2 >= 0 && this->y + 1 < 8 && (board[this->y + 1][this->x - 2] == NULL || board[this->y + 1][this->x - 2]->name[0] != this->name[0]))
+		if (this->x - 2 >= 0 && this->y + 1 < 8 && (board[this->y + 1][this->x - 2] == NULL || board[this->y + 1][this->x - 2]->isOpponent(*this)))
 		{
 			possibleMoves.insert(toMove(this->x - 2, this->y + 1));
-			if (board[this->y + 1][this->x - 2] != NULL && board[this->y + 1][this->x - 2]->name[0] != this->name[0])
+			if (board[this->y + 1][this->x - 2] != NULL && board[this->y + 1][this->x - 2]->isOpponent(*this))
 				captureMoves.insert(toMove(this->x - 2, this->y + 1));
 		}
-		if (this->x - 2 >= 0 && this->y - 1 >= 0 && (board[this->y - 1][this->x - 2] == NULL || board[this->y - 1][this->x - 2]->name[0] != this->name[0]))
+		if (this->x - 2 >= 0 && this->y - 1 >= 0 && (board[this->y - 1][this->x - 2] == NULL || board[this->y - 1][this->x - 2]->isOpponent(*this)))
 		{
 			possibleMoves.insert(toMove(this->x - 2, this->y - 1));
-			if (board[this->y - 1][this->x - 2] != NULL && board[this->y - 1][this->x - 2]->name[0] != this->name[0])
+			if (board[this->y - 1][this->x - 2] != NULL && board[this->y - 1][this->x - 2]->isOpponent(*this))
 				captureMoves.insert(toMove(this->x - 2, this->y - 1));
 		}
 
 		// |
 		//-|
 		// |
-		if (this->x + 1 < 8 && this->y + 2 < 8 && (board[this->y + 2][this->x + 1] == NULL || board[this->y + 2][this->x + 1]->name[0] != this->name[0]))
+		if (this->x + 1 < 8 && this->y + 2 < 8 && (board[this->y + 2][this->x + 1] == NULL || board[this->y + 2][this->x + 1]->isOpponent(*this)))
 		{
 			possibleMoves.insert(toMove(this->x + 1, this->y + 2));
-			if (board[this->y + 2][this->x + 1] != NULL && board[this->y + 2][this->x + 1]->name[0] != this->name[0])
+			if (board[this->y + 2][this->x + 1] != NULL && board[this->y + 2][this->x + 1]->isOpponent(*this))
 				captureMoves.insert(toMove(this->x + 1, this->y + 2));
 		}
-		if (this->x + 1 < 8 && this->y - 2 >= 0 && (board[this->y - 2][this->x + 1] == NULL || board[this->y - 2][this->x + 1]->name[0] != this->name[0]))
+		if (this->x + 1 < 8 && this->y - 2 >= 0 && (board[this->y - 2][this->x + 1] == NULL || board[this->y - 2][this->x + 1]->isOpponent(*this)))
 		{
 			possibleMoves.insert(toMove(this->x + 1, this->y - 2));
-			if (board[this->y - 2][this->x + 1] != NULL && board[this->y - 2][this->x + 1]->name[0] != this->name[0])
+			if (board[this->y - 2][this->x + 1] != NULL && board[this->y - 2][this->x + 1]->isOpponent(*this))
 				captureMoves.insert(toMove(this->x + 1, this->y - 2));
 		}
 
 		//|
 		//|-
 		//|
-		if (this->x - 1 >= 0 && this->y + 2 < 8 && (board[this->y + 2][this->x - 1] == NULL || board[this->y + 2][this->x - 1]->name[0] != this->name[0]))
+		if (this->x - 1 >= 0 && this->y + 2 < 8 && (board[this->y + 2][this->x - 1] == NULL || board[this->y + 2][this->x - 1]->isOpponent(*this)))
 		{
 			possibleMoves.insert(toMove(this->x - 1, this->y + 2));
-			if (board[this->y + 2][this->x - 1] != NULL && board[this->y + 2][this->x - 1]->name[0] != this->name[0])
+			if (board[this->y + 2][this->x - 1] != NULL && board[this->y + 2][this->x - 1]->isOpponent(*this))
 				captureMoves.insert(toMove(this->x - 1, this->y + 2));
 		}
-		if (this->x - 1 >= 0 && this->y - 2 >= 0 && (board[this->y - 2][this->x - 1] == NULL || board[this->y - 2][this->x - 1]->name[0] != this->name[0]))
+		if (this->x - 1 >= 0 && this->y - 2 >= 0 && (board[this->y - 2][this->x - 1] == NULL || board[this->y - 2][this->x - 1]->isOpponent(*this)))
 		{
 			possibleMoves.insert(toMove(this->x - 1, this->y - 2));
-			if (board[this->y - 2][this->x - 1] != NULL && board[this->y - 2][this->x - 1]->name[0] != this->name[0])
+			if (board[this->y - 2][this->x - 1] != NULL && board[this->y - 2][this->x - 1]->isOpponent(*this))
 				captureMoves.insert(toMove(this->x - 1, this->y - 2));
 		}
 
 		return possibleMoves;
 	}
+
+	Moves BM() {
+		pseudoLegalMoves();
+		if (possibleMoves.empty()) {
+			return Moves("NULL", -1);
+		}
+		for (string moves : captureMoves) {
+			int* pos = decodePosition(moves);
+			int attackX = pos[0], attackY = pos[1];
+			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+			possibleMoves.erase(possibleMoves.find(moves));
+		}
+
+		priority_queue<Moves> temp = bestMoves;//as bestMoves cleared due to reset function
+		const set<string> copy = possibleMoves;
+		for (string moves : copy) {
+			move(moves);//future attacks
+			pseudoLegalMoves();
+			int val = 15;
+			if (this->x == 0 || this->x == 7 || this->y == 0 || this->y == 7)//reducing chances of going to the rim
+				val -= 15;
+			temp.push(*(new Moves(moves, captureMoves.size() * 6 + val)));
+			undoMove();
+		}
+
+		vector<Moves> v;
+		for (int i = 0; i < 3 && !temp.empty(); i++) {
+			if (v.size() > 0 && abs(v[0].value - temp.top().value) > 15)
+				break;
+			v.push_back(temp.top());
+			temp.pop();
+		}
+
+		srand(unsigned(time(NULL)));
+		int pos = rand() % v.size();
+		return v[pos];
+	}
 };
 
 class Bishop :public Pieces {
 public:
-	Bishop(string pos, string color) :Pieces(pos, color + "B", 30) {}
+	Bishop(string pos, string color) :Pieces(pos, color + "B", 55) {}
 
-	void theBishop() {//remove l8r
-		cout << "Imma Bishop";
+	int rays(bool isNorth, bool isEast) {//lasers generator
+		int skewer = 10;
+		int dirX, dirY;
+		if (isNorth)
+			dirY = 1;
+		else
+			dirY = -1;
+
+		if (isEast)
+			dirX = 1;
+		else
+			dirX = -1;
+
+		int i,j;
+		for (i = this->y + dirY, j = this->x + dirX; i >= 0 && i < 8 && j < 8 && j >= 0; i+=dirY, j+=dirX)//se
+		{
+			if (board[i][j] != NULL)
+			{
+				if (board[i][j]->isOpponent(*this))
+				{
+					switch (board[i][j]->name[1]) {
+					case 'K':
+						skewer += 60;
+						break;
+					case 'Q':
+						skewer += 85;
+						break;
+					case 'R':
+						skewer += 53;
+						break;
+					case 'B':
+						skewer -= 30;
+						break;
+					case 'N':
+						skewer += 35;
+						break;
+
+					case 'P':
+						skewer -= 30;
+						break;
+					}
+				}
+
+				else
+					skewer -= 60;
+
+				if (abs(i - this->y) == 1 && abs(j - this->x) == 1 && board[i][j]->isOpponent(*this)
+					&& board[i][j]->name[1] == 'K' || board[i][j]->name[1] == 'Q')//if right next to the piece move not so good
+					skewer -= 15;
+			}
+		}
+
+		return skewer;
 	}
 
 	set<string> pseudoLegalMoves() {
@@ -557,7 +707,7 @@ public:
 		for (i = this->y - 1, j = this->x - 1; i >= 0 && j >= 0 && !LDpin; i--, j--) {//sw
 			if (board[i][j] != NULL)
 			{
-				if (board[i][j]->name[0] != this->name[0])
+				if (board[i][j]->isOpponent(*this))
 				{
 					possibleMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
 					captureMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
@@ -571,7 +721,7 @@ public:
 		{
 			if (board[i][j] != NULL)
 			{
-				if (board[i][j]->name[0] != this->name[0])
+				if (board[i][j]->isOpponent(*this))
 				{
 					possibleMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
 					captureMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
@@ -586,7 +736,7 @@ public:
 		{
 			if (board[i][j] != NULL)
 			{
-				if (board[i][j]->name[0] != this->name[0])
+				if (board[i][j]->isOpponent(*this))
 				{
 					possibleMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
 					captureMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
@@ -601,7 +751,7 @@ public:
 		{
 			if (board[i][j] != NULL)
 			{
-				if (board[i][j]->name[0] != this->name[0])
+				if (board[i][j]->isOpponent(*this))
 				{
 					possibleMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
 					captureMoves.insert(toMove(j, i));//adding the possible capture/attacked piece
@@ -614,15 +764,124 @@ public:
 
 		return possibleMoves;
 	}
+
+	Moves BM() {
+		pseudoLegalMoves();
+		if (possibleMoves.empty()) {
+			return Moves("NULL", -1);
+		}
+		for (string moves : captureMoves) {
+			int* pos = decodePosition(moves);
+			int attackX = pos[0], attackY = pos[1];
+			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+			possibleMoves.erase(possibleMoves.find(moves));
+		}
+		const set<string> copy = possibleMoves;
+		for (string moves : copy) { //laser moves --- to pin pieces
+			move(moves);//future attacks
+			bestMoves.push(*(new Moves(moves, (rays(0, 0) + rays(0, 1) + rays(1, 0) + rays(1, 1))/3)));//average attack of diagonal
+			undoMove();
+		}
+		vector<Moves> v;
+		for (int i = 0; i < 3 && !bestMoves.empty(); i++) {
+			if (v.size() > 0 && abs(v[0].value - bestMoves.top().value) > 15)
+				break;
+			v.push_back(bestMoves.top());
+			bestMoves.pop();
+		}
+
+		srand(unsigned(time(NULL)));
+		int pos = rand() % v.size();
+		return v[pos];
+
+	}
 };
 
 class Rook :public Pieces {
 public:
-	Rook(string pos, string color) :Pieces(pos, color + "R", 50) {}
+	Rook(string pos, string color) :Pieces(pos, color + "R", 70) {}
 	//sliding piece so need to just check for obstacles
 
-	void theRook() {//remove l8r
-		cout << "Imma Rookzzz";
+	int lasers(bool isVertical, bool increment) {//lasers generator
+		int skewer = 10;
+		int dirX, dirY;
+		if (isVertical)
+		{
+			dirX = 0;
+			dirY = pow(-1, increment + 1);
+		}
+		else
+		{
+			dirY = 0;
+			dirX = pow(-1, increment + 1);
+		}
+	
+
+		int i, j;
+		for (i = this->y + dirY, j = this->x + dirX; i >= 0 && i < 8 && j < 8 && j >= 0; i += dirY, j += dirX)//se
+		{
+			if (board[i][j] != NULL)
+			{
+				if (board[i][j]->isOpponent(*this))
+				{
+					switch (board[i][j]->name[1]) {
+					case 'K':
+						skewer += 80;
+						break;
+					case 'Q':
+						skewer += 65;
+						break;
+					case 'R':
+						skewer -= 60;
+						break;
+					case 'B':
+						skewer += 55;
+						break;
+					case 'N':
+						skewer += 55;
+						break;
+
+					case 'P':
+						skewer += 5;
+						break;
+					}
+				}
+
+				else
+					skewer -= 60;
+
+				if (abs(i - this->y) <= 1 && abs(j - this->x) <= 1 && board[i][j]->isOpponent(*this)
+					&& board[i][j]->name[1] == 'K' || board[i][j]->name[1] == 'Q')
+					skewer -= 15;
+			}
+
+			else {
+				if (i < 7 && j < 7 && i > 0 && j > 0) {
+					float mul = 0;
+					if (i < 6 && j < 6 && i > 1 && j > 1)
+						mul = 1;
+					if (board[i + 1][j + 1] == NULL)
+						mul += 0.5;
+					if (board[i + 1][j - 1] == NULL)
+						mul += 0.5;
+					if (board[i - 1][j + 1] == NULL)
+						mul += 0.5;;
+					if (board[i - 1][j - 1] == NULL)
+						mul += 0.5;;
+					if (board[i][j + 1] == NULL)
+						mul += 0.5;;
+					if (board[i][j - 1] == NULL)
+						mul += 0.5;;
+					if (board[i + 1][j] == NULL)
+						mul += 0.5;;
+					if (board[i - 1][j] == NULL)
+						mul += 0.5;
+					skewer += (int) mul;
+				}
+
+			}
+		}
+		return skewer;
 	}
 
 	set<string> pseudoLegalMoves() {
@@ -640,7 +899,7 @@ public:
 		{
 			if (board[i][this->x] != NULL)
 			{
-				if (board[i][this->x]->name[0] != this->name[0])
+				if (board[i][this->x]->isOpponent(*this))
 				{
 					possibleMoves.insert(toMove(this->x, i));//adding the possible capture/attacked piece
 					captureMoves.insert(toMove(this->x, i));//adding the possible capture/attacked piece
@@ -654,7 +913,7 @@ public:
 		{
 			if (board[i][this->x] != NULL)//going till it is blocked
 			{
-				if (board[i][this->x]->name[0] != this->name[0])
+				if (board[i][this->x]->isOpponent(*this))
 				{
 					possibleMoves.insert(toMove(this->x, i));//adding the possible capture/attacked piece
 					captureMoves.insert(toMove(this->x, i));//adding the possible capture/attacked piece
@@ -669,7 +928,7 @@ public:
 		{
 			if (board[this->y][j] != NULL)
 			{
-				if (board[this->y][j]->name[0] != this->name[0])
+				if (board[this->y][j]->isOpponent(*this))
 				{
 					possibleMoves.insert(toMove(j, this->y));
 					captureMoves.insert(toMove(j, this->y));//adding the possible capture/attacked piece
@@ -683,7 +942,7 @@ public:
 		{
 			if (board[this->y][j] != NULL)
 			{
-				if (board[this->y][j]->name[0] != this->name[0])
+				if (board[this->y][j]->isOpponent(*this))
 				{
 					possibleMoves.insert(toMove(j, this->y));
 					captureMoves.insert(toMove(j, this->y));//adding the possible capture/attacked piece
@@ -696,11 +955,42 @@ public:
 
 		return possibleMoves;
 	}
+
+	Moves BM() {
+		pseudoLegalMoves();
+		if (possibleMoves.empty()) {
+			return Moves("NULL", -1);
+		}
+		for (string moves : captureMoves) {
+			int* pos = decodePosition(moves);
+			int attackX = pos[0], attackY = pos[1];
+			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+			possibleMoves.erase(possibleMoves.find(moves));
+		}
+		const set<string> copy = possibleMoves;
+		for (string moves : copy) { //laser moves --- to pin pieces
+			move(moves);//future attacks
+			bestMoves.push(*(new Moves(moves, (lasers(0, 0) + lasers(0, 1) + lasers(1, 0) + lasers(1, 1)) / 3)));//average attack of diagonal
+			undoMove();
+		}
+
+		vector<Moves> v;
+		for (int i = 0; i < 3 && !bestMoves.empty(); i++) {
+			if (v.size() > 0 && abs(v[0].value - bestMoves.top().value) > 15)
+				break;
+			v.push_back(bestMoves.top());
+			bestMoves.pop();
+		}
+
+		srand(unsigned(time(NULL)));
+		int pos = rand() % v.size();
+		return v[pos];
+		}
 };
 
 class Queen :public Pieces {
 public:
-	Queen(string pos, string color) :Pieces(pos, color + "Q", 90) {}
+	Queen(string pos, string color) :Pieces(pos, color + "Q", 100) {}
 
 	set<string> pseudoLegalMoves() {
 		resetMoves();
@@ -720,13 +1010,29 @@ public:
 			captureMoves.insert(potentialCapture);
 		return possibleMoves;
 	}
+
+	Moves BM() {
+		pseudoLegalMoves();
+		if (possibleMoves.empty()) {
+			return Moves("NULL", -1);
+		}
+		Bishop tempB = *((Bishop*)this);
+		Rook tempR = *((Rook*)this);
+
+		bestMoves.push(tempB.BM());
+		bestMoves.push(tempR.BM());
+		//bestMoves.push(*(new Moves(*possibleMoves.begin(), 0)));
+
+		board[this->y][this->x] = this;
+		return bestMoves.top();
+	}
 };
 
 bool Pieces::isProtected() {//mainly for king capturing opposing/checking pieces
 	//diagonals
 	//chaging color to get pieces of same color using capture space
 	bool safe = false;
-	if (this->name[0] == 'w')
+	if (this->isWhite())
 		this->name[0] = 'b';
 	else
 		this->name[0] = 'w';
@@ -774,7 +1080,7 @@ bool Pieces::isProtected() {//mainly for king capturing opposing/checking pieces
 	}
 
 	//resetting kings color
-	if (this->name[0] == 'w')
+	if (this->isWhite())
 		this->name[0] = 'b';
 	else
 		this->name[0] = 'w';
@@ -813,7 +1119,7 @@ public:
 		for (string threat : LinearThreats.captureMoves) {
 			int* pos = decodePosition(threat);	
 			Pieces* opPiece = board[pos[1]][pos[0]];
-			if(opPiece->name[0] != this->name[0] &&//linear check
+			if(opPiece->isOpponent(*this) &&//linear check
 				(opPiece->name[1] == 'R' ||
 				opPiece->name[1] == 'Q')
 				)
@@ -823,7 +1129,7 @@ public:
 		for (string threat : DiagonalThreats.captureMoves) {
 			int* pos = decodePosition(threat);
 			Pieces* opPiece = board[pos[1]][pos[0]];
-			if (opPiece->name[0] != this->name[0] &&//diagonal check
+			if (opPiece->isOpponent(*this) &&//diagonal check
 				(opPiece->name[1] == 'B' ||
 				opPiece->name[1] == 'Q')
 				)
@@ -833,30 +1139,14 @@ public:
 		for (string threat : pawnThreats.captureMoves) {
 			int* pos = decodePosition(threat);
 			Pieces* opPiece = board[pos[1]][pos[0]];
-			if (opPiece->name[0] != this->name[0] && opPiece->name[1] == 'P') //Checking for Pawn
+			if (opPiece->isOpponent(*this) && opPiece->name[1] == 'P') //Checking for Pawn
 				checks.push_back(threat);
 		}
 
-		//pawn moves
-		/*int mul = 1;
-		if (this->name[0] == 'b')
-			mul *= -1;
-		Pieces* pieceNameLeft = NULL, *pieceNameRight = NULL;
-
-		if (x != 0)
-			pieceNameLeft = board[this->y + mul][this->x - 1];
-		if (x != 7)
-			pieceNameRight = board[this->y + mul][this->x + 1];
-
-		if (pieceNameLeft != NULL && pieceNameLeft->name[0] != this->name[0] && pieceNameLeft->name[1] == 'P')
-			checks.push_back(toMove(this->x - 1, this->y + mul));
-		if (pieceNameRight != NULL && pieceNameRight->name[0] != this->name[0] && pieceNameRight->name[1] == 'P')
-			checks.push_back(toMove(this->x + 1, this->y + mul));
-		*/
 		for (string threat : LThreats.captureMoves) {
 			int* pos = decodePosition(threat);
 			Pieces* opPiece = board[pos[1]][pos[0]];
-			if (opPiece->name[0] != this->name[0] && opPiece->name[1] == 'N') //Checking for Knight 
+			if (opPiece->isOpponent(*this) && opPiece->name[1] == 'N') //Checking for Knight 
 				checks.push_back(threat);
 		}
 
@@ -873,28 +1163,28 @@ public:
 		bool castlingFlag = false;
 		castling = 0;
 		//N
-		if (y > 0 && (board[this->y - 1][this->x] == NULL || board[this->y - 1][this->x]->name[0] != this->name[0]))
+		if (y > 0 && (board[this->y - 1][this->x] == NULL || board[this->y - 1][this->x]->isOpponent(*this)))
 			possibleMoves.insert(toMove(this->x, this->y - 1));
 		//S
-		if (y < 7 && (board[this->y + 1][this->x] == NULL || board[this->y + 1][this->x]->name[0] != this->name[0]))
+		if (y < 7 && (board[this->y + 1][this->x] == NULL || board[this->y + 1][this->x]->isOpponent(*this)))
 			possibleMoves.insert(toMove(this->x, this->y + 1));
 		//E
-		if (x < 7 && (board[this->y][this->x + 1] == NULL || board[this->y][this->x + 1]->name[0] != this->name[0]))
+		if (x < 7 && (board[this->y][this->x + 1] == NULL || board[this->y][this->x + 1]->isOpponent(*this)))
 			possibleMoves.insert(toMove(this->x + 1, this->y));
 		//W
-		if (x > 0 && (board[this->y][this->x - 1] == NULL || board[this->y][this->x - 1]->name[0] != this->name[0]))
+		if (x > 0 && (board[this->y][this->x - 1] == NULL || board[this->y][this->x - 1]->isOpponent(*this)))
 			possibleMoves.insert(toMove(this->x - 1, this->y));
 		//NW
-		if (y > 0 && x > 0 && (board[this->y - 1][this->x - 1] == NULL || board[this->y - 1][this->x - 1]->name[0] != this->name[0]))
+		if (y > 0 && x > 0 && (board[this->y - 1][this->x - 1] == NULL || board[this->y - 1][this->x - 1]->isOpponent(*this)))
 			possibleMoves.insert(toMove(this->x - 1, this->y - 1));
 		//SW
-		if (y < 7 && x > 0 && (board[this->y + 1][this->x - 1] == NULL || board[this->y + 1][this->x - 1]->name[0] != this->name[0]))
+		if (y < 7 && x > 0 && (board[this->y + 1][this->x - 1] == NULL || board[this->y + 1][this->x - 1]->isOpponent(*this)))
 			possibleMoves.insert(toMove(this->x - 1, this->y + 1));
 		//SE
-		if (y < 7 && x < 7 && (board[this->y + 1][this->x + 1] == NULL || board[this->y + 1][this->x + 1]->name[0] != this->name[0]))
+		if (y < 7 && x < 7 && (board[this->y + 1][this->x + 1] == NULL || board[this->y + 1][this->x + 1]->isOpponent(*this)))
 			possibleMoves.insert(toMove(this->x + 1, this->y + 1));
 		//NE
-		if (y > 0 && x < 7 && (board[this->y - 1][this->x + 1] == NULL || board[this->y - 1][this->x + 1]->name[0] != this->name[0]))
+		if (y > 0 && x < 7 && (board[this->y - 1][this->x + 1] == NULL || board[this->y - 1][this->x + 1]->isOpponent(*this)))
 			possibleMoves.insert(toMove(this->x + 1, this->y - 1));
 
 		//checking for castling
@@ -913,7 +1203,6 @@ public:
 		if (board[this->y][7] != NULL &&//checking if piece in that location exists
 			board[this->y][7]->name[1] == 'R' && board[this->y][7]->prevX.size() == 1 &&//the square has same coloured unmoved Rook
 			board[this->y][6] == NULL && //automatically gets catered
-			//>>>>Check after legal move<<<possibleMoves.count(toMove(5, this->y)) && //board[this->y][5] == NULL &&//empty spaces between right rook and king, this caters itself as king in check if this block
 			this->prevX.size() == 1 && this->x == 4 && !isChecked())//king has not moved from its own position
 		{
 			possibleMoves.insert(toMove(this->x + 2, this->y));//Castling possible, write castling logic below
@@ -929,7 +1218,7 @@ public:
 			set<string> tempCopy(possibleMoves);
 			for (string moves : possibleMoves) {
 				int* coord = decodePosition(moves);
-				if (board[coord[1]][coord[0]] != NULL && board[coord[1]][coord[0]]->name[0] != this->name[0])
+				if (board[coord[1]][coord[0]] != NULL && board[coord[1]][coord[0]]->isOpponent(*this))
 					if (!board[coord[1]][coord[0]]->isProtected())
 						captureMoves.insert(moves);
 					else
@@ -940,7 +1229,7 @@ public:
 
 		//castling checks
 		if (castlingFlag) {//need to revamp logic here as this should only generate moves not do them
-			if (possibleMoves.count(toMove(5, this->y)) && possibleMoves.count(toMove(6, this->y)))//king side castling only possible if no rays at the kings final and initial position
+			if (possibleMoves.find(toMove(5, this->y)) != possibleMoves.end() && possibleMoves.find(toMove(6, this->y)) != possibleMoves.end())//king side castling only possible if no rays at the kings final and initial position
 				castling = 1;
 				//board[this->y][7]->move(toMove(5, this->y));//put this logic somewhere else
 			else {
@@ -948,7 +1237,7 @@ public:
 				if (cond2 != possibleMoves.end())
 					possibleMoves.erase(cond2);
 			}
-			if (possibleMoves.count(toMove(3, this->y)) && possibleMoves.count(toMove(2, this->y)))//same as above
+			if (possibleMoves.find(toMove(3, this->y)) != possibleMoves.end() && possibleMoves.find(toMove(2, this->y)) != possibleMoves.end())//same as above
 				castling = -1;
 				//board[this->y][0]->move(toMove(3, this->y));
 
@@ -958,12 +1247,54 @@ public:
 					possibleMoves.erase(cond1);
 			}
 		}
-
 		
 		return possibleMoves;
 	}//change return to legalMoves function
 
 	void legalMoves();
+
+	Moves BM() {
+		pseudoLegalMoves();
+		if (possibleMoves.empty()) {
+			return Moves("NULL", -1);
+		}
+		for (string moves : possibleMoves) {
+			int* pos = decodePosition(moves);
+			int attackX = pos[0], attackY = pos[1];
+			//if (board[attackY][attackX]->value >= this->value)//pawn can capture other pawn
+			if (prevY.size() == 1 && (find(castlingMoves, castlingMoves + 4, moves) != castlingMoves + 4))//prefer castling at first possible moment
+				bestMoves.push(*(new Moves(moves, 50)));
+
+			if (//if in the open try to take cover
+				(attackX < 7 && board[attackY][attackX + 1] != NULL && !board[attackY][attackX + 1]->isOpponent(*this)) || //protect fellow pieces
+				(attackX > 0 && board[attackY][attackX - 1] != NULL && !board[attackY][attackX - 1]->isOpponent(*this))) {
+				int val = 6;
+				if ((this->isWhite() && (attackY == 0 || attackY == 1)) ||
+					(this->name[0] == 'b' && (attackY == 6 || attackY == 7)))
+					val += 6;
+				bestMoves.push(*(new Moves(moves, val)));
+			}
+
+			else
+				bestMoves.push(*(new Moves(*possibleMoves.begin(), 0)));
+		}
+		for (string moves : captureMoves) {
+			int* pos = decodePosition(moves);
+			int attackX = pos[0], attackY = pos[1];
+			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+		}
+
+		//adding slight randomness
+		vector<Moves> v;
+		for (int i = 0; i < 3 && !bestMoves.empty(); i++){
+			v.push_back(bestMoves.top());
+			bestMoves.pop();
+		}
+
+		srand(unsigned(time(NULL)));
+		int pos = rand()%v.size();
+		return v[pos];
+	}
 };
 
 //Module 2-Player
@@ -1022,7 +1353,7 @@ public:
 		}
 		pieces.push_back(king);
 		//placing pawns
-		/*for (char i = 'a'; i < 'i'; i++)
+		for (char i = 'a'; i < 'i'; i++)
 		{
 			if (isWhite)
 				pieces.push_back(new Pawn(string(1, i) + "2", "w"));
@@ -1048,25 +1379,21 @@ public:
 			pieces.push_back(new Knight("b8", "b"));
 			pieces.push_back(new Rook("a8", "b"));
 			pieces.push_back(new Rook("h8", "b"));
-		}*/
+		}
 
 		//>>>>Add pieces here<<<<
 
 		//DO NOT DEFINE KING HERE AS IT IS BEING IMPLICITY MADE WHEN PLAYER CREATED
-		if (isWhite) {
+		/*if (isWhite) {
 			//Checkmate
 			//pieces.push_back(new Rook("a7", "w"));
 			//pieces.push_back(new Queen("d4", "w"));
 			//pieces.push_back(new Pawn("f2", "w"));
 			//pieces.push_back(new Pawn("c5", "w"));
 			//Pins
-			/*pieces.push_back(new Queen("f1", "w"));
-			pieces.push_back(new Pawn("d6", "w"));
-			//pieces.push_back(new Rook("e2", "w"));
-			pieces.push_back(new Queen("d2", "w"));
-			pieces.push_back(new Bishop("g6", "w"));
-			pieces.push_back(new Pawn("a7", "w"));*/
-			pieces.push_back(new Knight("a7", "w"));
+			pieces.push_back(new Queen("c1", "w"));
+			pieces.push_back(new Bishop("g4", "w"));
+			//pieces.push_back(new Bishop("g5", "w"));
 		}
 		else {
 			//checkMate
@@ -1074,15 +1401,15 @@ public:
 			//pieces.push_back(new Pawn("b7", "b"));
 			//pieces.push_back(new Rook("a2", "b"));
 			//pieces.push_back(new Rook("h8", "b"));
-			pieces.push_back(new Knight("g3", "b"));
+			//pieces.push_back(new Knight("g3", "b"));
 			//Pins
 			//pieces.push_back(new Queen("e7", "b"));
-			/*pieces.push_back(new Pawn("g2", "b"));
-			pieces.push_back(new Rook("h1", "b"));
-			pieces.push_back(new Pawn("f7", "b"));
-			pieces.push_back(new Bishop("g5", "b"));
-			pieces.push_back(new Pawn("h7", "b"));*/
-		}
+			//pieces.push_back(new Pawn("g2", "b"));
+			//pieces.push_back(new Bishop("g5", "b"));
+			pieces.push_back(new Queen("h3", "b"));
+			//pieces.push_back(new Bishop("a3", "b"));
+			//pieces.push_back(new Bishop("a4", "b"));
+		}*/
 	}
 
 	list<Pieces*>& getPieces() {
@@ -1258,7 +1585,7 @@ void King::legalMoves() {//>>>Can be made more efficient by only going through t
 		//PAWN HAS DIFFERENT ATTACK PATTERN
 		if (piece->name[1] == 'P') {
 			piece->resetMoves();
-			if (piece->name[0] == 'w') {
+			if (piece->isWhite()) {
 				piece->possibleMoves.insert(toMove(piece->x + 1, piece->y + 1));//can generate illegal moves as we do not care for these moves
 				piece->possibleMoves.insert(toMove(piece->x - 1, piece->y + 1));
 			}
@@ -1271,7 +1598,7 @@ void King::legalMoves() {//>>>Can be made more efficient by only going through t
 		else
 			piece->pseudoLegalMoves();//setting the pieces pseudoLegalMoves unordered set
 		for (string move : piece->possibleMoves)
-			if (possibleMoves.count(move) > 0)
+			if (possibleMoves.find(move) != possibleMoves.end())
 				possibleMoves.erase(possibleMoves.find(move));
 	}
 	board[this->y][this->x] = this;
@@ -1328,7 +1655,7 @@ bool isvalid(bool isWhite, string space)
 		return false;
 	}
 
-	else if ((board[space[1] - '1'][space[0] - 'a']->name[0] == 'w' && !isWhite) || (board[space[1] - '1'][space[0] - 'a']->name[0] == 'b' && isWhite))
+	else if ((board[space[1] - '1'][space[0] - 'a']->isWhite() && !isWhite) || (board[space[1] - '1'][space[0] - 'a']->name[0] == 'b' && isWhite))
 	{
 		cout << "You cannot control those pieces." << endl;
 		return false;
@@ -1404,7 +1731,8 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 
 	if (A.isAI()) {
 		cout << "AI making move...\n";
-		AITurn(A, movesInCheck);
+		system("pause");
+		AITurn(A, movesInCheck, WinorLose);
 		return 0;
 	}
 
@@ -1513,6 +1841,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			cout << "Invalid Move" << endl;
 			continue;
 		}
+		system("pause");
 		system("CLS");
 		break;
 	}
@@ -1520,85 +1849,62 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	return 0;
 }
 
-void AITurn(Player& AI, map<Pieces*, set<string>>& inCheck)
+void AITurn(Player& AI, map<Pieces*, set<string>>& inCheck, int& WinorLose)
 {
-	//making it do a random move
-	//generating pseudo-legal moves
-	srand((unsigned)time(NULL));
 	list<Pieces*> allPieces = AI.getPieces();
-	int pieceNo = rand() % allPieces.size();
-	Pieces* selPiece = NULL;
-	Pieces* backup = NULL;
-	set<string> backupMoves;
-	set<string> pieceMoves;
-	int counter = 0;//selecting piece
+	Pieces* pieceToMove = NULL;
+	Moves MoveToPlay;
+	multimap<Moves, Pieces*, greater<Moves>> movepool;
 
 	if (AI.Checked()) {
-		pieceNo = rand() % inCheck.size();
-		for (auto i = inCheck.begin(); i != inCheck.end(); counter++, i++)
-			if (counter == pieceNo)
-			{
-				selPiece = (*i).first;
-				pieceMoves = (*i).second;
-				break;
-			}
-		AI.setCheck(false);
+		pieceToMove = AI.getKing();
+		movepool.insert(pair<Moves, Pieces*>(pieceToMove->BM(), pieceToMove));
 	}
-	
+
 	else {
-		for (auto i = allPieces.begin(); i != allPieces.end(); counter++) {
-			/*if (counter == pieceNo) {
-				pieceMoves = (*i)->pseudoLegalMoves();
-
-				if (pieceMoves.size() == 0)
-					cout << selPiece;
-				if (!pieceMoves.empty())
-				{
-					selPiece = *i;
-					break;
-				}
-				pieceNo = rand() % allPieces.size();
-				counter = -1;
-				i = allPieces.begin();*/
-			pieceMoves = (*i)->pseudoLegalMoves();
-			if (!(*i)->captureMoves.empty()){
-				selPiece = *i;
-				pieceMoves = (*i)->captureMoves;
-				break;
+		for (Pieces* piece : allPieces) {
+			Moves pieceMove = piece->BM();
+			if (MoveToPlay <= pieceMove && pieceMove.value != -1)
+			{
+				movepool.insert(pair<Moves, Pieces*>(pieceMove, piece));
+				MoveToPlay = pieceMove;
 			}
+		}
+	}
 
-			else if (counter == pieceNo) {
-				//pieceMoves = (*i)->pseudoLegalMoves();
-				if (!pieceMoves.empty())
-				{
-					backupMoves = pieceMoves;
-					backup = *i;
-					continue;
-				}
-				pieceNo = rand() % allPieces.size();
-				counter = -1;
-				i = allPieces.begin();
-			}
-
+	if (movepool.empty()) {
+		if (AI.Checked()) {
+			if (AI.getKing()->isWhite())
+				WinorLose = 2;
 			else
-				i++;
+				WinorLose = 1;
 		}
+		else
+			WinorLose = 3;
+		return;
+	}
+	AI.setCheck(false);
+	srand(unsigned(time(NULL)));
+
+	int pos = 1;
+	multimap<Moves, Pieces*>::iterator prev = movepool.begin();
+	for (multimap<Moves, Pieces*>::iterator i = ++movepool.begin(); i != movepool.end(); i++, pos++) {
+		if (prev->first.value - i->first.value < 10)
+			prev++;
+		else
+			break;
 	}
 
-	if (selPiece == NULL)
-	{
-		selPiece = backup;
-		pieceMoves = backupMoves;
-	}
+	pos = rand() % pos;
 
-	counter = 0;
-	int randMove = rand() % pieceMoves.size();
-	for (auto i = pieceMoves.begin(); i != pieceMoves.end(); i++, counter++)
-		if (counter == randMove)
-		{
-			selPiece->move(*i);
-			AI.Promotion(board[(*i)[1] - '1'][(*i)[0] - 'a']);
-		}
+
+	multimap<Moves, Pieces*>::iterator it = movepool.begin();
+	advance(it, pos);
+	MoveToPlay = (*it).first;
+	pieceToMove = (*it).second;
+	pieceToMove->move(MoveToPlay.move);
+	int* decodedPos = decodePosition(MoveToPlay.move);
+	AI.Promotion(board[decodedPos[1]][decodedPos[0]]);
 }
 
 void vsPlayerGame(bool AisAI, bool BisAI)
@@ -1650,8 +1956,10 @@ void vsPlayerGame(bool AisAI, bool BisAI)
 
 	if (WinorLose == 1)
 		cout << endl << "The White Player has won the game!";
-	else
+	else if (WinorLose == 2)
 		cout << endl << "The Black Player has won the game!";
+	else
+		cout << endl << "Stalemate";
 
 	_getch();
 }
@@ -1672,7 +1980,7 @@ int main() {
 		int choice = 0;
 		cout << "\t\t         CHESS" << endl;
 		cout << "\t\tWhat kind of game would you like to play?" << endl;
-		cout << "\t\t1. vs AI" << endl << "\t\t2. vs Player" << endl << "\t\t3. AIvsAI"  << endl << "\t\t4.Quit" << endl;
+		cout << "\t\t1. vs Bot" << endl << "\t\t2. vs Player" << endl << "\t\t3. Bot Vs Bot" << endl << "\t\t4. Quit" << endl;
 		cout << "\t\tYour choice: ";
 		while (choice < 1 || choice > 4)
 			cin >> choice;
