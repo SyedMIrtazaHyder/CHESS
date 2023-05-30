@@ -42,7 +42,7 @@ struct Moves {
 		return this->value > alt.value;
 	}
 
-	Moves(): value(-1),move("NULL") {}
+	Moves() : value(-1), move("NULL") {}
 };
 //call capture logic when a piece is captured like we did for enpassant
 //all directions based on black side
@@ -63,8 +63,8 @@ class Pieces {
 public:
 	int x, y, value;
 	string name;
-	stack<int> prevX;
-	stack<int> prevY;
+	list<int> prevX;
+	list<int> prevY;
 	set<string> possibleMoves;//listing all the possible moves possible by a certain piece
 	set<string> captureMoves;//lists all the possible pieces current piece can capture
 	priority_queue<Moves> bestMoves;
@@ -73,8 +73,8 @@ public:
 		board[y][x] = this;
 
 		//pushes original position of piece onto stack.
-		prevX.push(x);
-		prevY.push(y);
+		prevX.push_front(x);
+		prevY.push_front(y);
 	}
 	//string validCastling[4] = {"g8", "g1", "c8", "c1"};
 
@@ -82,7 +82,7 @@ public:
 		return name[0] == 'w';
 	}
 
-	bool isOpponent(Pieces &Opp) {
+	bool isOpponent(Pieces& Opp) {
 		return name[0] != Opp.name[0];
 	}
 
@@ -133,7 +133,7 @@ public:
 
 		}
 
-		if (castling != 0){// && isCastlingMove(move)) {//code this new function
+		if (castling != 0) {// && isCastlingMove(move)) {//code this new function
 			if (find(castlingMoves, castlingMoves + 4, pos) == castlingMoves + 4)//failsafe for invalid castling moves
 				castling = 0;
 
@@ -155,8 +155,8 @@ public:
 		}
 
 		//system("pause");
-		prevX.push(x);
-		prevY.push(y);
+		prevX.push_front(x);
+		prevY.push_front(y);
 
 
 		board[y][x] = NULL;
@@ -168,16 +168,16 @@ public:
 
 	void undoMove()
 	{
-		int oldx = prevX.top();
-		int oldy = prevY.top();
+		int oldx = prevX.front();
+		int oldy = prevY.front();
 
 		board[y][x] = NULL;
 		x = oldx;
 		y = oldy;
 		board[y][x] = this;
 
-		prevX.pop();
-		prevY.pop();
+		prevX.pop_front();
+		prevY.pop_front();
 	}
 
 	bool isProtected();
@@ -359,7 +359,7 @@ public:
 
 class Pawn :public Pieces {
 public:
-	Pawn(string pos, string color) :Pieces(pos, color + "P", 45) {}
+	Pawn(string pos, string color) :Pieces(pos, color + "P", 30) {}
 	//list<string> possibleMoves;//will move this into pieces later as a set, as two pieces can never have the same start pos but can have same end pos
 
 	set<string> pseudoLegalMoves() {//generating a rough lookup-table
@@ -512,7 +512,7 @@ public:
 		for (string moves : captureMoves) {
 			int* pos = decodePosition(moves);
 			int attackX = pos[0], attackY = pos[1];
-			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+			bestMoves.push(*(new Moves(moves, (board[attackY][attackX]->value / this->value)*40)));
 		}
 		return bestMoves.top();
 	}
@@ -527,7 +527,7 @@ public:
 		resetMoves();
 		//moving like an octopus smh
 		//--|
-		bool pin = horizontalPin() && verticalPin() && leftDiagonalPin() && rightDiagonalPin();
+		bool pin = horizontalPin() || verticalPin() || leftDiagonalPin() || rightDiagonalPin();
 		if (pin)//return empty set as horse has no valid moves
 			return possibleMoves;
 
@@ -602,7 +602,7 @@ public:
 		for (string moves : captureMoves) {
 			int* pos = decodePosition(moves);
 			int attackX = pos[0], attackY = pos[1];
-			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+			bestMoves.push(*(new Moves(moves, (board[attackY][attackX]->value / this->value) *35)));
 			possibleMoves.erase(possibleMoves.find(moves));
 		}
 
@@ -649,8 +649,8 @@ public:
 		else
 			dirX = -1;
 
-		int i,j;
-		for (i = this->y + dirY, j = this->x + dirX; i >= 0 && i < 8 && j < 8 && j >= 0; i+=dirY, j+=dirX)//se
+		int i, j;
+		for (i = this->y + dirY, j = this->x + dirX; i >= 0 && i < 8 && j < 8 && j >= 0; i += dirY, j += dirX)//se
 		{
 			if (board[i][j] != NULL)
 			{
@@ -773,13 +773,13 @@ public:
 		for (string moves : captureMoves) {
 			int* pos = decodePosition(moves);
 			int attackX = pos[0], attackY = pos[1];
-			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+			bestMoves.push(*(new Moves(moves, (board[attackY][attackX]->value / this->value) *35)));
 			possibleMoves.erase(possibleMoves.find(moves));
 		}
 		const set<string> copy = possibleMoves;
 		for (string moves : copy) { //laser moves --- to pin pieces
 			move(moves);//future attacks
-			bestMoves.push(*(new Moves(moves, (rays(0, 0) + rays(0, 1) + rays(1, 0) + rays(1, 1))/3)));//average attack of diagonal
+			bestMoves.push(*(new Moves(moves, (rays(0, 0) + rays(0, 1) + rays(1, 0) + rays(1, 1)) / 3)));//average attack of diagonal
 			undoMove();
 		}
 		vector<Moves> v;
@@ -815,7 +815,7 @@ public:
 			dirY = 0;
 			dirX = pow(-1, increment + 1);
 		}
-	
+
 
 		int i, j;
 		for (i = this->y + dirY, j = this->x + dirX; i >= 0 && i < 8 && j < 8 && j >= 0; i += dirY, j += dirX)//se
@@ -876,7 +876,7 @@ public:
 						mul += 0.5;;
 					if (board[i - 1][j] == NULL)
 						mul += 0.5;
-					skewer += (int) mul;
+					skewer += (int)mul;
 				}
 
 			}
@@ -964,7 +964,7 @@ public:
 		for (string moves : captureMoves) {
 			int* pos = decodePosition(moves);
 			int attackX = pos[0], attackY = pos[1];
-			bestMoves.push(*(new Moves(moves, board[attackY][attackX]->value)));
+			bestMoves.push(*(new Moves(moves, (board[attackY][attackX]->value / this->value) *35)));
 			possibleMoves.erase(possibleMoves.find(moves));
 		}
 		const set<string> copy = possibleMoves;
@@ -985,7 +985,7 @@ public:
 		srand(unsigned(time(NULL)));
 		int pos = rand() % v.size();
 		return v[pos];
-		}
+	}
 };
 
 class Queen :public Pieces {
@@ -1117,11 +1117,11 @@ public:
 
 		//merging all the threats
 		for (string threat : LinearThreats.captureMoves) {
-			int* pos = decodePosition(threat);	
+			int* pos = decodePosition(threat);
 			Pieces* opPiece = board[pos[1]][pos[0]];
-			if(opPiece->isOpponent(*this) &&//linear check
+			if (opPiece->isOpponent(*this) &&//linear check
 				(opPiece->name[1] == 'R' ||
-				opPiece->name[1] == 'Q')
+					opPiece->name[1] == 'Q')
 				)
 				checks.push_back(threat);
 		}
@@ -1131,7 +1131,7 @@ public:
 			Pieces* opPiece = board[pos[1]][pos[0]];
 			if (opPiece->isOpponent(*this) &&//diagonal check
 				(opPiece->name[1] == 'B' ||
-				opPiece->name[1] == 'Q')
+					opPiece->name[1] == 'Q')
 				)
 				checks.push_back(threat);
 		}
@@ -1158,7 +1158,7 @@ public:
 
 	}
 
-	set<string> pseudoLegalMoves(){
+	set<string> pseudoLegalMoves() {
 		resetMoves();
 		bool castlingFlag = false;
 		castling = 0;
@@ -1231,7 +1231,7 @@ public:
 		if (castlingFlag) {//need to revamp logic here as this should only generate moves not do them
 			if (possibleMoves.find(toMove(5, this->y)) != possibleMoves.end() && possibleMoves.find(toMove(6, this->y)) != possibleMoves.end())//king side castling only possible if no rays at the kings final and initial position
 				castling = 1;
-				//board[this->y][7]->move(toMove(5, this->y));//put this logic somewhere else
+			//board[this->y][7]->move(toMove(5, this->y));//put this logic somewhere else
 			else {
 				set<string>::iterator cond2 = possibleMoves.find(toMove(6, this->y));
 				if (cond2 != possibleMoves.end())
@@ -1239,15 +1239,15 @@ public:
 			}
 			if (possibleMoves.find(toMove(3, this->y)) != possibleMoves.end() && possibleMoves.find(toMove(2, this->y)) != possibleMoves.end())//same as above
 				castling = -1;
-				//board[this->y][0]->move(toMove(3, this->y));
+			//board[this->y][0]->move(toMove(3, this->y));
 
-			else{//otherwise removing the moves from the legal moves entirely
+			else {//otherwise removing the moves from the legal moves entirely
 				set<string>::iterator cond1 = possibleMoves.find(toMove(2, this->y));
 				if (cond1 != possibleMoves.end())
 					possibleMoves.erase(cond1);
 			}
 		}
-		
+
 		return possibleMoves;
 	}//change return to legalMoves function
 
@@ -1286,13 +1286,13 @@ public:
 
 		//adding slight randomness
 		vector<Moves> v;
-		for (int i = 0; i < 3 && !bestMoves.empty(); i++){
+		for (int i = 0; i < 3 && !bestMoves.empty(); i++) {
 			v.push_back(bestMoves.top());
 			bestMoves.pop();
 		}
 
 		srand(unsigned(time(NULL)));
-		int pos = rand()%v.size();
+		int pos = rand() % v.size();
 		return v[pos];
 	}
 };
@@ -1302,7 +1302,7 @@ class Player {
 	bool isWhite, isChecked, AI;
 	list<Pieces*> pieces;
 	//These are the pieces that have been moved/captured
-	stack<Pieces*> movedPieces;
+	list<Pieces*> movedPieces;
 	King* king;
 	int counter;
 public:
@@ -1323,7 +1323,7 @@ public:
 		return AI;
 	}
 
-	void setCheck(bool check){
+	void setCheck(bool check) {
 		isChecked = check;
 	}
 
@@ -1340,7 +1340,7 @@ public:
 		counter = 0;
 
 		//Adding a buffer element so that the stack does not give errors
-		movedPieces.push(NULL);
+		movedPieces.push_front(NULL);
 		//color only needed for king assignment
 		if (isWhite)
 		{
@@ -1381,42 +1381,13 @@ public:
 			pieces.push_back(new Rook("h8", "b"));
 		}
 
-		//>>>>Add pieces here<<<<
-
-		//DO NOT DEFINE KING HERE AS IT IS BEING IMPLICITY MADE WHEN PLAYER CREATED
-		/*if (isWhite) {
-			//Checkmate
-			//pieces.push_back(new Rook("a7", "w"));
-			//pieces.push_back(new Queen("d4", "w"));
-			//pieces.push_back(new Pawn("f2", "w"));
-			//pieces.push_back(new Pawn("c5", "w"));
-			//Pins
-			pieces.push_back(new Queen("c1", "w"));
-			pieces.push_back(new Bishop("g4", "w"));
-			//pieces.push_back(new Bishop("g5", "w"));
-		}
-		else {
-			//checkMate
-			//pieces.push_back(new Pawn("e4", "b"));
-			//pieces.push_back(new Pawn("b7", "b"));
-			//pieces.push_back(new Rook("a2", "b"));
-			//pieces.push_back(new Rook("h8", "b"));
-			//pieces.push_back(new Knight("g3", "b"));
-			//Pins
-			//pieces.push_back(new Queen("e7", "b"));
-			//pieces.push_back(new Pawn("g2", "b"));
-			//pieces.push_back(new Bishop("g5", "b"));
-			pieces.push_back(new Queen("h3", "b"));
-			//pieces.push_back(new Bishop("a3", "b"));
-			//pieces.push_back(new Bishop("a4", "b"));
-		}*/
 	}
 
 	list<Pieces*>& getPieces() {
 		return pieces;
 	}
 
-	stack<Pieces*>& getMovedPieces()
+	list<Pieces*>& getMovedPieces()
 	{
 		return movedPieces;
 	}
@@ -1426,21 +1397,21 @@ public:
 		{
 			counter++;
 		}
-		movedPieces.push(pushed);
+		movedPieces.push_front(pushed);
 	}
 
 	void undo() {
-		if (movedPieces.top() == NULL && !movedPieces.empty())
+		if (movedPieces.front() == NULL && !movedPieces.empty())
 		{
-			movedPieces.pop();
+			movedPieces.pop_front();
 			//>>>>problem when returning the latest of the captured pieces<<<,
 			//movedPieces.pop();//popping twice to retrive the captured piece as well
 		}
 
 		else if (movedPieces.size() > 1 && counter > 0)
 		{
-			movedPieces.top()->undoMove();
-			movedPieces.pop();
+			movedPieces.front()->undoMove();
+			movedPieces.pop_front();
 
 			counter--;
 		}
@@ -1448,8 +1419,8 @@ public:
 
 	void Captured(Pieces* piece)
 	{
-		piece->prevX.push(piece->x);
-		piece->prevY.push(piece->y);
+		piece->prevX.push_front(piece->x);
+		piece->prevY.push_front(piece->y);
 
 		this->pushPiece(piece);
 	}
@@ -1470,7 +1441,7 @@ public:
 		/*for (string kingMove : king->possibleMoves)values already in unordered set
 			danger.push_back(kingMove);*/
 
-		//adding empty spaces where we can block forseen check
+			//adding empty spaces where we can block forseen check
 		if (attackerPos[0] == king->x)// so we know that opposing piece has vertical or horizontal ray
 		{
 			int mul = 1;
@@ -1501,7 +1472,7 @@ public:
 				danger.push_back(toMove(i, j));
 			}
 		}
-		
+
 		//generating all possible moves for all pieces and comparing it with moves in danger
 		for (Pieces* p : pieces) {
 			if (p == NULL)
@@ -1523,7 +1494,7 @@ public:
 		//capturing the checking piece
 		//if (attackerPiece->name[1] == 'N' || attackerPiece->name[1] == 'P')//checked by knight, pawn checked cannot be blocked so need to capture or move king
 		//blocking check and not possible if checked by knight, pawn checked cannot be blocked, and king cannot give check
-		
+
 
 
 	}
@@ -1532,6 +1503,7 @@ public:
 	{
 		if (piece->name[1] == 'P' && (piece->y == 0 || piece->y == 7))
 		{
+			pieces.remove(piece);
 			char choice = ' ';
 			string piecePosition = "Z0";
 			piecePosition[0] = piece->x + 'a';
@@ -1687,7 +1659,8 @@ bool validPosition(string Space)
 
 //This boolean will decide whether to skip the next player's turn or not.
 bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
-{	//Player A is the current player
+{	
+	//Player A is the current player
 	//need info on the opponent king so we can prevent their move generation
 	kingToMove = A.getKing()->name;
 	string p1, p2;
@@ -1697,7 +1670,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	Pieces* pieceSelected = NULL;
 	A.setPieces();
 
-	cout << A.getPieces().size() << endl;
+	cout << A.getPieces().size() << " " << B.getPieces().size() <<  endl;
 	if (A.getPieces().size() == 1 && B.getPieces().size() == 1) {
 		cout << "Stalemate\n";
 		WinorLose = 3;
@@ -1783,7 +1756,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		{
 			cout << "Enter current position of piece: ";
 			cin >> p1;
-			
+
 			if (validPosition(p1) && A.Checked() && !movesInCheck.empty()) {
 				int* boardPos = decodePosition(p1);
 				if (movesInCheck.find(board[boardPos[1]][boardPos[0]]) == movesInCheck.end())//only move valid piece in check
@@ -1801,7 +1774,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		int* selectedPiecePos = decodePosition(p1);
 		pieceSelected = board[selectedPiecePos[1]][selectedPiecePos[0]];
 
-		
+
 		cout << "Enter move: ";
 		cin >> p2;
 		if (validPosition(p2) && A.Checked() && !movesInCheck.empty()) {
@@ -1849,7 +1822,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	return 0;
 }
 
-void AITurn(Player& AI, map<Pieces*, set<string>>& inCheck, int& WinorLose)
+void AITurn(Player& AI, map<Pieces*, set<string>>& movesInCheck, int& WinorLose)
 {
 	list<Pieces*> allPieces = AI.getPieces();
 	Pieces* pieceToMove = NULL;
@@ -1857,8 +1830,15 @@ void AITurn(Player& AI, map<Pieces*, set<string>>& inCheck, int& WinorLose)
 	multimap<Moves, Pieces*, greater<Moves>> movepool;
 
 	if (AI.Checked()) {
-		pieceToMove = AI.getKing();
-		movepool.insert(pair<Moves, Pieces*>(pieceToMove->BM(), pieceToMove));
+		for (auto i : movesInCheck) {
+			Moves temp = i.first->BM();
+			if (i.second.find(temp.move) != i.second.end())
+				movepool.insert({ temp, i.first });
+			else {
+				Moves temp2(*(i.second.begin()), 0);
+				movepool.insert({ temp2, i.first });
+			}
+		}
 	}
 
 	else {
@@ -1902,6 +1882,8 @@ void AITurn(Player& AI, map<Pieces*, set<string>>& inCheck, int& WinorLose)
 	advance(it, pos);
 	MoveToPlay = (*it).first;
 	pieceToMove = (*it).second;
+	//Added this line to test the condition for repetition stalemate
+	AI.pushPiece(pieceToMove);
 	pieceToMove->move(MoveToPlay.move);
 	int* decodedPos = decodePosition(MoveToPlay.move);
 	AI.Promotion(board[decodedPos[1]][decodedPos[0]]);
@@ -1914,6 +1896,8 @@ void vsPlayerGame(bool AisAI, bool BisAI)
 	bool CheckRollback = false;
 	bool skipPlayer = false;
 	int WinorLose = 0;
+	//setting counter for Draw
+	int drawCounter = 0;
 	//setting new players
 	Player A(isWhite);
 	Player B(!isWhite);
@@ -1935,6 +1919,18 @@ void vsPlayerGame(bool AisAI, bool BisAI)
 
 	//Main gameplay loop is here
 	do {
+		if (A.getMovedPieces().size() > 2 && B.getMovedPieces().size() > 2 && A.getMovedPieces().back() != NULL)
+		{
+			
+			if (A.getMovedPieces().front()->name == A.getMovedPieces().back()->name && A.getMovedPieces().front()->prevX.front() == A.getMovedPieces().back()->prevX.front() && A.getMovedPieces().front()->prevY.front() == A.getMovedPieces().back()->prevY.front() &&
+				B.getMovedPieces().front()->name == B.getMovedPieces().back()->name && B.getMovedPieces().front()->prevX.front() == B.getMovedPieces().back()->prevX.front() && B.getMovedPieces().front()->prevY.front() == B.getMovedPieces().back()->prevY.front())
+				drawCounter++;
+			else
+				drawCounter--;
+
+			if (drawCounter == 3)
+				break;
+		}
 
 		if (!skipPlayer)
 		{

@@ -1,7 +1,9 @@
 # Data-Structure-Project
 To add:</br>
 -Fix undo</br>
--Condition for stalemate</br>
+-Three fold repition</br>
+-Exit out of AI game at any time</br>
+-Convert to header files</br>
 -Other comments in file, please try to implement them as code becomes more readable</br>
 
 Need to work on later:</br>
