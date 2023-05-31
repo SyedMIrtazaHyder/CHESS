@@ -8,16 +8,19 @@ Must Read: https://alexanderameye.github.io/notes/chess-engine/</br>
 Bot Ideas: https://www.freecodecamp.org/news/simple-chess-ai-step-by-step-1d55a9266977/</br>
 How to Properly make a chess engine: https://www.chessprogramming.org/Main_Page</br>
 Generating Psuedo Legal and Legal Moves: https://peterellisjones.com/posts/generating-legal-chess-moves-efficiently/#:~:text=Pseudo-legal%20move%20generation,enemy%20pieces%20on%20(captures). </br>
-##Feautures:
+## Feautures:</br>
 The main features that are implemented include:</br>
 <ul>
   <li>ASCII Gameboard</li>
   <li>Player vs Player</li>
   <li>Hardcoded decision Bot</li>
 </ul>
-### Gameboard
-### Player
-### Bot
+
+### Gameboard:</br>
+Write here</br>
+### Player</br>
+Write here</br>
+### Bot</br>
 A lot of time and effort was put into making the game cater for the Bot. I had to refractor the whole code to generate legal moves so it was easier for the Bot to pick a move. After that I had designed a custom class called moves which took the move and some evaluation metrics, which was sent to a priority queue to always get the Best Computed move based on our evaluation functions. This operation was applied to all the pieces on a single side and then the played moved was choosen randomly between the general top 3 moves among all the existing pieces.
 
 
