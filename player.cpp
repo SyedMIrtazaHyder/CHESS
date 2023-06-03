@@ -51,14 +51,6 @@ Player::Player(bool isWhite) : isWhite(isWhite), isChecked(false), AI(false) {
 	}
 
 }
-void Player::setPieces() {
-	for (auto i = pieces.begin(); i != pieces.end();) {
-		if ((*i)->name == "\0")
-			pieces.erase(i++);
-		else
-			++i;
-	}
-}
 void Player::setAI(bool val) {
 	AI = val;
 }
@@ -99,10 +91,18 @@ void Player::undo() {
 	else if (movedPieces.size() > 1 && counter > 0)
 	{
 		movedPieces.front()->undoMove();
+
+		list<Pieces*>::iterator i = find(pieces.begin(), pieces.end(), movedPieces.front());
+		if (i == pieces.end())
+			pieces.push_back(movedPieces.front());
+		
 		movedPieces.pop_front();
 
 		counter--;
 	}
+
+	while (!Board::movedPieces.empty())
+		Board::movedPieces.pop();
 }
 void Player::Captured(Pieces* piece)
 {
@@ -110,6 +110,11 @@ void Player::Captured(Pieces* piece)
 	piece->prevY.push_front(piece->y);
 
 	this->pushPiece(piece);
+
+	list<Pieces*>::iterator i = find(pieces.begin(),pieces.end(),piece);
+	if (i != pieces.end())
+		pieces.erase(i);
+
 }
 map<Pieces*, set<string>> Player::LegalMovesInCheck() {//>>>>Avoding checkmate logic here, user only allowed to make these moves
 	//atm just generating the kingMoves
@@ -270,7 +275,6 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	Board::displayBoard();
 	map<Pieces*, set<string>> movesInCheck;
 	Pieces* pieceSelected = NULL;
-	A.setPieces();
 	
 	cout << A.getPieces().size() << " " << B.getPieces().size() << endl;
 	if (A.getPieces().size() == 1 && B.getPieces().size() == 1) {
@@ -307,7 +311,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	if (A.isAI()) {
 		cout << "AI making move...\n";
 		system("pause");
-		AITurn(A, movesInCheck, WinorLose);
+		AITurn(A, B, movesInCheck, WinorLose);
 		return 0;
 	}
 
@@ -332,8 +336,8 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		if (A.getMovedPieces().size() > 2 && B.getMovedPieces().size() > 2)
 		{
 			//Undo because of Player
-			A.undo();
 			B.undo();
+			A.undo();
 
 
 			//Undo for the Opponent
@@ -393,7 +397,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			//Pushing the enemy piece onto the Undo Stack
 			if (Board::board[p2[1] - '1'][p2[0] - 'a'] != NULL)
 				B.Captured(Board::board[p2[1] - '1'][p2[0] - 'a']);
-
+	
 			//Adding in NULL to make sure Undo's work properly
 			else
 				B.pushPiece(NULL);
@@ -402,6 +406,13 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			A.pushPiece(Board::board[p1[1] - '1'][p1[0] - 'a']);
 
 			//Moving the piece on the Board::board
+			//Can't undo a castle
+			if (castling != 0)
+			{
+				A.counter = 0;
+				B.counter = -1;
+			}
+
 			Board::board[p1[1] - '1'][p1[0] - 'a']->move(p2);
 			if (ThreefoldRepition(Board::board[p2[1] - '1'][p2[0] - 'a'], p2)) {
 				WinorLose = -2;//-2 for draw
@@ -422,7 +433,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 
 	return 0;
 }
-void AITurn(Player& AI, map<Pieces*, set<string>>& movesInCheck, int& WinorLose)
+void AITurn(Player& AI, Player &B, map<Pieces*, set<string>>& movesInCheck, int& WinorLose)
 {
 	list<Pieces*> allPieces = AI.getPieces();
 	Pieces* pieceToMove = NULL;
@@ -484,8 +495,21 @@ void AITurn(Player& AI, map<Pieces*, set<string>>& movesInCheck, int& WinorLose)
 	pieceToMove = (*it).second;
 	//Added this line to test the condition for repetition stalemate
 	AI.pushPiece(pieceToMove);
-	pieceToMove->move(MoveToPlay.move);
+
 	int* decodedPos = Board::decodePosition(MoveToPlay.move);
+	if (Board::board[decodedPos[1]][decodedPos[0]] != NULL)
+		B.Captured(Board::board[decodedPos[1]][decodedPos[0]]);
+	else
+		B.pushPiece(NULL);
+
+	//no Undoing a castle.
+	if (castling != 0)
+	{
+		AI.counter = 0;
+		B.counter = -1;
+	}
+
+	pieceToMove->move(MoveToPlay.move);
 	AI.Promotion(Board::board[decodedPos[1]][decodedPos[0]]);
 	if (ThreefoldRepition(Board::board[decodedPos[1]][decodedPos[0]], MoveToPlay.move)) {
 		WinorLose = -2;//-2 for draw
