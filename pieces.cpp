@@ -1,14 +1,13 @@
-#include "pieces.h"
 #include "board.h"
+#include "pieces.h"
 using namespace std;
 
 //global vars
-bool Enpassant = false;
 Pieces* getEnPassant = NULL;
 Pieces* checkEnPassant;
-std::string kingToMove;//0 = white, 1 = black
+string kingToMove;//0 = white, 1 = black
 int castling = 0;//-1 for queen Side, 1 for king side, 0 for not possible
-std::string castlingMoves[4] = { "g8", "g1", "c8", "c1" };
+string castlingMoves[4] = { "g8", "g1", "c8", "c1" };
 
 Moves::Moves(string move, int value) : value(value), move(move) {}
 bool Moves::operator < (const Moves& alt) const {
@@ -115,7 +114,6 @@ void Pieces::move(string pos) {
 	x = pos[0] - 'a';
 	y = pos[1] - '1';
 	Board::board[y][x] = this;
-
 }
 void Pieces::undoMove()
 {
@@ -296,6 +294,13 @@ bool Pieces::leftDiagonalPin() {
 			}
 		}
 	return diagonalThreat && kingInDiagonal;
+}
+
+bool Pieces::operator==(Pieces& p)
+{
+	if (this->x == p.x && this->y == p.y && this->value == p.value && this->name == name)
+		return true;
+	return false;
 }
 
 Pawn::Pawn(string pos, string color) :Pieces(pos, color + "P", 30) {}

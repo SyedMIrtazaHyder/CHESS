@@ -4,13 +4,16 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <iostream>
+#include <queue>
 
 //AI turn undefined
 class Pieces;
+struct Moves;
 namespace Board {
 	extern std::vector< std::vector<Pieces*> > board; //trying to define a global variable
-
+	extern std::queue<Pieces*> movedPieces;
 	void displayBoard();
 	//Used to decode the position of the spaces from string to integers
 	int* decodePosition(std::string pos);

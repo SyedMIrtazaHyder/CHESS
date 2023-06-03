@@ -2,10 +2,7 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
-#include <list>
-#include <string>
 #include <conio.h>
-#include <iostream>
 
 class Player {
 	bool isWhite, isChecked, AI;
@@ -47,5 +44,6 @@ public:
 bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose);
 void AITurn(Player& AI, std::map<Pieces*, std::set<std::string>>& movesInCheck, int& WinorLose);
 void vsPlayerGame(bool AisAI, bool BisAI);
+bool ThreefoldRepition(Pieces*,std::string);
 
 #endif // !PLAYER_H

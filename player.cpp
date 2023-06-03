@@ -74,9 +74,6 @@ bool Player::Checked() {
 King* Player::getKing() {
 	return king;
 }
-
-
-//isValid is missing
 list<Pieces*>& Player::getPieces() {
 	return pieces;
 }
@@ -274,11 +271,11 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	map<Pieces*, set<string>> movesInCheck;
 	Pieces* pieceSelected = NULL;
 	A.setPieces();
-
+	
 	cout << A.getPieces().size() << " " << B.getPieces().size() << endl;
 	if (A.getPieces().size() == 1 && B.getPieces().size() == 1) {
 		cout << "Stalemate\n";
-		WinorLose = 3;
+		WinorLose = 2;
 		return 1;
 	}
 
@@ -288,7 +285,7 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		{
 			cout << "CheckMate...\n";
 			if (isWhite)
-				WinorLose = 2;
+				WinorLose = -1;
 			else
 				WinorLose = 1;
 			return 1;
@@ -298,23 +295,19 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		else {
 			A.setCheck(true);
 			cout << "Check!!!\n";
-			for (auto i = movesInCheck.begin(); i != movesInCheck.end(); i++) {
+			/*for (auto i = movesInCheck.begin(); i != movesInCheck.end(); i++) {
 				cout << "Piece: " << i->first->name << endl << "Moves: ";
 				for (auto j = i->second.begin(); j != i->second.end(); j++)
 					cout << *j << " ";
 				cout << endl;
-			}
+			}*/
 		}
 	}
 
-	if (A.isAI()) {
-		cout << "AI making move...\n";
-		system("pause");
-		AITurn(A, movesInCheck, WinorLose);
-		return 0;
-	}
-
-	cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
+	if (A.isAI())
+		cout << "Press 1 to continue, Press 3 to exit game\n";
+	else
+		cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
 	do
 	{
 		cin >> p1;
@@ -328,6 +321,14 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			WinorLose = 1;
 		return 1;
 	}
+
+	if (A.isAI()) {
+		cout << "AI making move...\n";
+		system("pause");
+		AITurn(A, movesInCheck, WinorLose);
+		return 0;
+	}
+
 
 
 	if (p1 == "2")
@@ -401,15 +402,15 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			//Adding in NULL to make sure Undo's work properly
 			else
 				B.pushPiece(NULL);
-			Enpassant = false;
-
 
 			//Pushing previous Piece and moving it
 			A.pushPiece(Board::board[p1[1] - '1'][p1[0] - 'a']);
 
 			//Moving the piece on the Board::board
 			Board::board[p1[1] - '1'][p1[0] - 'a']->move(p2);
-
+			if (ThreefoldRepition(Board::board[p2[1] - '1'][p2[0] - 'a'], p2)) {
+				WinorLose = -2;//-2 for draw
+			}
 			//Promotion in case it happens
 			A.Promotion(Board::board[p2[1] - '1'][p2[0] - 'a']);
 			A.setCheck(false);
@@ -459,12 +460,12 @@ void AITurn(Player& AI, map<Pieces*, set<string>>& movesInCheck, int& WinorLose)
 	if (movepool.empty()) {
 		if (AI.Checked()) {
 			if (AI.getKing()->isWhite())
-				WinorLose = 2;
+				WinorLose = -1;
 			else
 				WinorLose = 1;
 		}
 		else
-			WinorLose = 3;
+			WinorLose = -2;
 		return;
 	}
 	AI.setCheck(false);
@@ -491,6 +492,9 @@ void AITurn(Player& AI, map<Pieces*, set<string>>& movesInCheck, int& WinorLose)
 	pieceToMove->move(MoveToPlay.move);
 	int* decodedPos = Board::decodePosition(MoveToPlay.move);
 	AI.Promotion(Board::board[decodedPos[1]][decodedPos[0]]);
+	if (ThreefoldRepition(Board::board[decodedPos[1]][decodedPos[0]], MoveToPlay.move)) {
+		WinorLose = -2;//-2 for draw
+	}
 }
 void vsPlayerGame(bool AisAI, bool BisAI)
 {
@@ -522,19 +526,6 @@ void vsPlayerGame(bool AisAI, bool BisAI)
 
 	//Main gameplay loop is here
 	do {
-		if (A.getMovedPieces().size() > 2 && B.getMovedPieces().size() > 2 && A.getMovedPieces().back() != NULL)
-		{
-
-			if (A.getMovedPieces().front()->name == A.getMovedPieces().back()->name && A.getMovedPieces().front()->prevX.front() == A.getMovedPieces().back()->prevX.front() && A.getMovedPieces().front()->prevY.front() == A.getMovedPieces().back()->prevY.front() &&
-				B.getMovedPieces().front()->name == B.getMovedPieces().back()->name && B.getMovedPieces().front()->prevX.front() == B.getMovedPieces().back()->prevX.front() && B.getMovedPieces().front()->prevY.front() == B.getMovedPieces().back()->prevY.front())
-				drawCounter++;
-			else
-				drawCounter--;
-
-			if (drawCounter == 3)
-				break;
-		}
-
 		if (!skipPlayer)
 		{
 			cout << "Player 1 Turn: " << endl;
@@ -550,15 +541,42 @@ void vsPlayerGame(bool AisAI, bool BisAI)
 		}
 		else
 			skipPlayer = false;
-
 	} while (WinorLose == 0);
-
+	// WinorLose: 1 = white wins, -1 = black wins, 2 = draw by repitition, -2 = stalemate
 	if (WinorLose == 1)
 		cout << endl << "The White Player has won the game!";
-	else if (WinorLose == 2)
+	else if (WinorLose == -1)
 		cout << endl << "The Black Player has won the game!";
-	else
+	else if (WinorLose == 2)
 		cout << endl << "Stalemate";
+	else
+		cout << endl << "Draw by repitition!";
 
 	_getch();
+}
+
+bool ThreefoldRepition(Pieces* p, string move) {
+	static float drawCounter = 0;
+	if (Board::movedPieces.size() < 4)
+		Board::movedPieces.push(p);
+	else {
+		if (p == Board::movedPieces.front()) {
+			int currentX = p->prevX.front(), currentY = p->prevY.front();
+			pair<list<int>::iterator, list<int>::iterator> i = { p->prevX.begin(), p->prevY.begin() };//getting 2nd last move from current move
+			advance(i.first, 2);
+			advance(i.second, 2);
+			if (currentX == *(i.first) && currentY == *(i.second))
+				drawCounter += 0.25f;
+			else
+				drawCounter = 0;
+		}
+		else
+			drawCounter = 0;
+		Board::movedPieces.pop();
+		Board::movedPieces.push(p);
+	}
+
+	if (drawCounter > 1.75)
+		return true;
+	return false;
 }

@@ -9,7 +9,7 @@
 #include <map>
 #include <cmath>
 #include <queue>
-#include <iostream>
+#include <variant>
 
 struct Moves {
 	int value;
@@ -28,7 +28,7 @@ struct Moves {
 
 class Player;
 
-class Pieces {
+class Pieces{
 public:
 	int x, y, value;
 	std::string name;
@@ -51,6 +51,7 @@ public:
 	bool horizontalPin();
 	bool rightDiagonalPin();
 	bool leftDiagonalPin();
+	bool operator == (Pieces&);
 	virtual std::set<std::string> pseudoLegalMoves() = 0;
 	virtual Moves BM() = 0; //BestMove
 };
@@ -107,7 +108,6 @@ public:
 	Moves BM();
 };
 
-extern bool Enpassant;
 extern Pieces* getEnPassant;
 extern Pieces* checkEnPassant;
 extern std::string kingToMove;//0 = white, 1 = black

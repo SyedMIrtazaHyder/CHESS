@@ -3,6 +3,7 @@
 using namespace std;
 
 vector< vector<Pieces*> > Board::board(8, vector<Pieces*>(8, NULL));
+queue<Pieces*> Board::movedPieces;
 
 void Board::displayBoard() {
 	cout << "   ";
