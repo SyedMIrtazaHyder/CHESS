@@ -274,7 +274,6 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 	
 	cout << A.getPieces().size() << " " << B.getPieces().size() << endl;
 	if (A.getPieces().size() == 1 && B.getPieces().size() == 1) {
-		cout << "Stalemate\n";
 		WinorLose = 2;
 		return 1;
 	}
@@ -304,23 +303,6 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		}
 	}
 
-	if (A.isAI())
-		cout << "Press 1 to continue, Press 3 to exit game\n";
-	else
-		cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Give up" << endl << endl << "Your choice: ";
-	do
-	{
-		cin >> p1;
-	} while (p1 != "1" && p1 != "2" && p1 != "3");
-
-	if (p1 == "3")
-	{
-		if (isWhite)
-			WinorLose = 2;
-		else
-			WinorLose = 1;
-		return 1;
-	}
 
 	if (A.isAI()) {
 		cout << "AI making move...\n";
@@ -329,7 +311,20 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 		return 0;
 	}
 
+	cout << "What would you like to do?\n" << "1.Make a move" << endl << "2.Undo a Move" << endl << "3.Resign" << endl << endl << "Your choice: ";
 
+	do {
+		cin >> p1;
+	} while (p1 != "1" && p1 != "2" && p1 != "3");
+
+	if (p1 == "3")
+	{
+		if (isWhite)
+			WinorLose = -1;
+		else
+			WinorLose = 1;
+		return 1;
+	}
 
 	if (p1 == "2")
 	{
