@@ -84,16 +84,16 @@ void Pieces::move(string pos) {
 
 	}
 
-	if (castling != 0) {// && isCastlingMove(move)) {//code this new function
+	if (castling == 1) {// && isCastlingMove(move)) {//code this new function
 		if (find(castlingMoves, castlingMoves + 4, pos) == castlingMoves + 4)//failsafe for invalid castling moves
 			castling = 0;
 
-		if (castling == 1)//king side castle
+		if (pos[0] == 'g')//king side castle
 		{
 			castling = 0;//need to reset to prevent rook to make infinte loop when it calls move function again
 			Board::board[this->y][7]->move(Board::toMove(5, this->y));
 		}
-		else if (castling == -1) {//queen side castle
+		else if (pos[0] == 'c') {//queen side castle
 			castling = 0;
 			Board::board[this->y][0]->move(Board::toMove(3, this->y));
 		}
@@ -102,7 +102,7 @@ void Pieces::move(string pos) {
 
 	if (Board::board[pos[1] - '1'][pos[0] - 'a'] != NULL) {
 		Pieces* capturedPiece = Board::board[pos[1] - '1'][pos[0] - 'a'];
-		capturedPiece->name = "\0";
+		//capturedPiece->name = "\0";
 	}
 
 	//system("pause");
@@ -1145,7 +1145,7 @@ set<string> King::pseudoLegalMoves() {
 				possibleMoves.erase(cond2);
 		}
 		if (possibleMoves.find(Board::toMove(3, this->y)) != possibleMoves.end() && possibleMoves.find(Board::toMove(2, this->y)) != possibleMoves.end())//same as above
-			castling = -1;
+			castling = 1;
 		//Board::board[this->y][0]->move(Board::toMove(3, this->y));
 
 		else {//otherwise removing the moves from the legal moves entirely

@@ -10,8 +10,9 @@ class Player {
 	//These are the pieces that have been moved/captured
 	std::list<Pieces*> movedPieces;
 	King* king;
-	int counter;
 public:
+	int counter;
+
 	void setPieces();
 
 	void setAI(bool val);
@@ -42,7 +43,7 @@ public:
 };
 
 bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose);
-void AITurn(Player& AI, std::map<Pieces*, std::set<std::string>>& movesInCheck, int& WinorLose);
+void AITurn(Player& AI, Player& A, std::map<Pieces*, std::set<std::string>>& movesInCheck, int& WinorLose);
 void vsPlayerGame(bool AisAI, bool BisAI);
 bool ThreefoldRepition(Pieces*,std::string);
 
