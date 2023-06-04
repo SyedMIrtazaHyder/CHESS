@@ -24,10 +24,10 @@ Player::Player(bool isWhite) : isWhite(isWhite), isChecked(false), AI(false) {
 	//placing pawns
 	for (char i = 'a'; i < 'i'; i++)
 	{
-		//if (isWhite)
-			//pieces.push_back(new Pawn(string(1, i) + "2", "w"));
-		//else
-			//pieces.push_back(new Pawn(string(1, i) + "7", "b"));
+		if (isWhite)
+			pieces.push_back(new Pawn(string(1, i) + "2", "w"));
+		else
+			pieces.push_back(new Pawn(string(1, i) + "7", "b"));
 	}
 
 	if (isWhite) {
@@ -503,7 +503,8 @@ void AITurn(Player& AI, Player &B, map<Pieces*, set<string>>& movesInCheck, int&
 	AI.pushPiece(pieceToMove);
 
 	int* decodedPos = Board::decodePosition(MoveToPlay.move);
-
+	if (pieceToMove->name[1] == 'K' && pieceToMove->prevX.size() == 1 && find(castlingMoves, castlingMoves + 4, MoveToPlay.move) != castlingMoves + 4)
+		castling = 1;
 	//no Undoing a castle.
 	if (castling != 0)
 	{

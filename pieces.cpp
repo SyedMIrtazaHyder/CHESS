@@ -1139,7 +1139,7 @@ set<string> King::pseudoLegalMoves() {
 	}
 
 	//castling checks
-	if (castlingFlag) {//need to revamp logic here as this should only generate moves not do them
+	if (castlingFlag && kingToMove == this->name) {//need to revamp logic here as this should only generate moves not do them
 		if (possibleMoves.find(Board::toMove(5, this->y)) != possibleMoves.end() && possibleMoves.find(Board::toMove(6, this->y)) != possibleMoves.end())//king side castling only possible if no rays at the kings final and initial position
 			castling = 1;
 		//Board::board[this->y][7]->move(Board::toMove(5, this->y));//put this logic somewhere else
@@ -1171,7 +1171,10 @@ Moves King::BM() {
 		int attackX = pos[0], attackY = pos[1];
 		//if (Board::board[attackY][attackX]->value >= this->value)//pawn can capture other pawn
 		if (prevY.size() == 1 && (find(castlingMoves, castlingMoves + 4, moves) != castlingMoves + 4))//prefer castling at first possible moment
+		{
 			bestMoves.push(*(new Moves(moves, 50)));
+			continue;
+		}
 
 		if (//if in the open try to take cover
 			(attackX < 7 && Board::board[attackY][attackX + 1] != NULL && !Board::board[attackY][attackX + 1]->isOpponent(*this)) || //protect fellow pieces
