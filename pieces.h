@@ -44,7 +44,7 @@ public:
 	bool isOpponent(Pieces& Opp);
 	void resetMoves();
 	bool validMoves(std::string pos);
-	void move(std::string pos);
+	Pieces* move(std::string pos);
 	void undoMove();
 	bool isProtected();
 	bool verticalPin();
