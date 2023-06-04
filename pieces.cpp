@@ -59,11 +59,12 @@ bool Pieces::validMoves(string pos) {
 	cout << endl;
 	return find(possibleMoves.begin(), possibleMoves.end(), pos) != possibleMoves.end();
 }
-void Pieces::move(string pos) {
+Pieces* Pieces::move(string pos) {
 	//Pushes the new position of the piece onto the stack.
 	//Pieces* checkEnPassant = getEnPassant;
 	//for (string move : this->possibleMoves)
 	//	cout << move << " ";
+	Pieces* capturedPiece = NULL;
 
 	if (getEnPassant != NULL && getEnPassant == this && (//for enPassant
 		(Board::toMove(x, y + 2) != pos && this->isWhite()) ||
@@ -77,8 +78,9 @@ void Pieces::move(string pos) {
 		if ((pos == Board::toMove(getEnPassant->x, getEnPassant->y - 1) && getEnPassant->isWhite()) ||
 			(pos == Board::toMove(getEnPassant->x, getEnPassant->y + 1) && getEnPassant->name[0] == 'b'))
 		{
-			Pieces* capturedPiece = Board::board[getEnPassant->y][getEnPassant->x];
-			capturedPiece->name = "\0";
+			capturedPiece = Board::board[getEnPassant->y][getEnPassant->x];
+			Board::board[getEnPassant->y][getEnPassant->x] = NULL;
+			//capturedPiece->name = "\0";
 		}
 		getEnPassant = NULL;
 
@@ -101,7 +103,7 @@ void Pieces::move(string pos) {
 
 
 	if (Board::board[pos[1] - '1'][pos[0] - 'a'] != NULL) {
-		Pieces* capturedPiece = Board::board[pos[1] - '1'][pos[0] - 'a'];
+		capturedPiece = Board::board[pos[1] - '1'][pos[0] - 'a'];
 		//capturedPiece->name = "\0";
 	}
 
@@ -114,6 +116,8 @@ void Pieces::move(string pos) {
 	x = pos[0] - 'a';
 	y = pos[1] - '1';
 	Board::board[y][x] = this;
+
+	return capturedPiece;
 }
 void Pieces::undoMove()
 {

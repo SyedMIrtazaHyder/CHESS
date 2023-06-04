@@ -24,28 +24,28 @@ Player::Player(bool isWhite) : isWhite(isWhite), isChecked(false), AI(false) {
 	//placing pawns
 	for (char i = 'a'; i < 'i'; i++)
 	{
-		if (isWhite)
-			pieces.push_back(new Pawn(string(1, i) + "2", "w"));
-		else
-			pieces.push_back(new Pawn(string(1, i) + "7", "b"));
+		//if (isWhite)
+			//pieces.push_back(new Pawn(string(1, i) + "2", "w"));
+		//else
+			//pieces.push_back(new Pawn(string(1, i) + "7", "b"));
 	}
 
 	if (isWhite) {
-		pieces.push_back(new Queen("d1", "w"));
-		pieces.push_back(new Bishop("c1", "w"));
-		pieces.push_back(new Bishop("f1", "w"));
-		pieces.push_back(new Knight("g1", "w"));
-		pieces.push_back(new Knight("b1", "w"));
+		//pieces.push_back(new Queen("d1", "w"));
+		//pieces.push_back(new Bishop("c1", "w"));
+		//pieces.push_back(new Bishop("f1", "w"));
+		//pieces.push_back(new Knight("g1", "w"));
+		//pieces.push_back(new Knight("b1", "w"));
 		pieces.push_back(new Rook("h1", "w"));
 		pieces.push_back(new Rook("a1", "w"));
 	}
 
 	else {
-		pieces.push_back(new Queen("d8", "b"));
-		pieces.push_back(new Bishop("c8", "b"));
-		pieces.push_back(new Bishop("f8", "b"));
-		pieces.push_back(new Knight("g8", "b"));
-		pieces.push_back(new Knight("b8", "b"));
+		//pieces.push_back(new Queen("d8", "b"));
+		//pieces.push_back(new Bishop("c8", "b"));
+		//pieces.push_back(new Bishop("f8", "b"));
+		//pieces.push_back(new Knight("g8", "b"));
+		//pieces.push_back(new Knight("b8", "b"));
 		pieces.push_back(new Rook("a8", "b"));
 		pieces.push_back(new Rook("h8", "b"));
 	}
@@ -110,6 +110,7 @@ void Player::Captured(Pieces* piece)
 	piece->prevY.push_front(piece->y);
 
 	this->pushPiece(piece);
+	
 
 	list<Pieces*>::iterator i = find(pieces.begin(),pieces.end(),piece);
 	if (i != pieces.end())
@@ -189,7 +190,7 @@ map<Pieces*, set<string>> Player::LegalMovesInCheck() {//>>>>Avoding checkmate l
 
 
 }
-void Player::Promotion(Pieces* piece)
+bool Player::Promotion(Pieces* piece)
 {
 	if (piece->name[1] == 'P' && (piece->y == 0 || piece->y == 7))
 	{
@@ -203,8 +204,8 @@ void Player::Promotion(Pieces* piece)
 
 		if (isAI()) {
 			pieces.push_back(new Queen(piecePosition, string(1, piece->name[0])));
-			counter = 0;
-			return;
+			counter = -1;
+			return true;
 		}
 
 		cout << "\n\n";
@@ -230,8 +231,12 @@ void Player::Promotion(Pieces* piece)
 		}
 
 		//Cannot undo a Promotion
-		counter = 0;
+		counter = -1;
+
+		return true;
 	}
+
+	return false;
 }
 
 //forwarded functions
@@ -394,13 +399,6 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 
 		if (Board::board[p1[1] - '1'][p1[0] - 'a']->validMoves(p2))//, Board::board[p1[1] - '1'][p1[0] - 'a']->name))
 		{
-			//Pushing the enemy piece onto the Undo Stack
-			if (Board::board[p2[1] - '1'][p2[0] - 'a'] != NULL)
-				B.Captured(Board::board[p2[1] - '1'][p2[0] - 'a']);
-	
-			//Adding in NULL to make sure Undo's work properly
-			else
-				B.pushPiece(NULL);
 
 			//Pushing previous Piece and moving it
 			A.pushPiece(Board::board[p1[1] - '1'][p1[0] - 'a']);
@@ -409,16 +407,24 @@ bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose)
 			//Can't undo a castle
 			if (castling != 0)
 			{
-				A.counter = 0;
-				B.counter = -1;
+				A.counter = -1;
+				B.counter = -2;
 			}
 
-			Board::board[p1[1] - '1'][p1[0] - 'a']->move(p2);
+			Pieces* captured = Board::board[p1[1] - '1'][p1[0] - 'a']->move(p2);
+			//Pushing the enemy piece onto the Undo Stack
+			if (captured != NULL)
+				B.Captured(captured);
+			//Adding in NULL to make sure Undo's work properly
+			else
+				B.pushPiece(NULL);
+
 			if (ThreefoldRepition(Board::board[p2[1] - '1'][p2[0] - 'a'], p2)) {
 				WinorLose = -2;//-2 for draw
 			}
 			//Promotion in case it happens
-			A.Promotion(Board::board[p2[1] - '1'][p2[0] - 'a']);
+			if (A.Promotion(Board::board[p2[1] - '1'][p2[0] - 'a']))
+				B.counter = -1;
 			A.setCheck(false);
 		}
 		else
@@ -497,20 +503,23 @@ void AITurn(Player& AI, Player &B, map<Pieces*, set<string>>& movesInCheck, int&
 	AI.pushPiece(pieceToMove);
 
 	int* decodedPos = Board::decodePosition(MoveToPlay.move);
-	if (Board::board[decodedPos[1]][decodedPos[0]] != NULL)
-		B.Captured(Board::board[decodedPos[1]][decodedPos[0]]);
-	else
-		B.pushPiece(NULL);
 
 	//no Undoing a castle.
 	if (castling != 0)
 	{
-		AI.counter = 0;
-		B.counter = -1;
+		AI.counter = -1;
+		B.counter = -2;
 	}
+	Pieces* captured = pieceToMove->move(MoveToPlay.move);
 
-	pieceToMove->move(MoveToPlay.move);
-	AI.Promotion(Board::board[decodedPos[1]][decodedPos[0]]);
+	if (captured != NULL)
+		B.Captured(captured);
+	else
+		B.pushPiece(NULL);
+
+
+	if (AI.Promotion(Board::board[decodedPos[1]][decodedPos[0]]))
+		B.counter = -1;
 	if (ThreefoldRepition(Board::board[decodedPos[1]][decodedPos[0]], MoveToPlay.move)) {
 		WinorLose = -2;//-2 for draw
 	}
@@ -522,6 +531,7 @@ void vsPlayerGame(bool AisAI, bool BisAI)
 	bool CheckRollback = false;
 	bool skipPlayer = false;
 	int WinorLose = 0;
+	char choice;
 	//setting counter for Draw
 	int drawCounter = 0;
 	//setting new players
@@ -545,6 +555,18 @@ void vsPlayerGame(bool AisAI, bool BisAI)
 
 	//Main gameplay loop is here
 	do {
+		if (AisAI && BisAI)
+		{
+			cout << "Would you like to quit the match?\nPress 1 to quit";
+			choice = _getch();
+			if (choice == '1')
+			{
+				//Random value here
+				WinorLose = 9;
+				break;
+			}
+			cout << endl;
+		}
 		if (!skipPlayer)
 		{
 			cout << "Player 1 Turn: " << endl;
@@ -568,7 +590,7 @@ void vsPlayerGame(bool AisAI, bool BisAI)
 		cout << endl << "The Black Player has won the game!";
 	else if (WinorLose == 2)
 		cout << endl << "Stalemate";
-	else
+	else if (WinorLose == -2)
 		cout << endl << "Draw by repitition!";
 
 	_getch();

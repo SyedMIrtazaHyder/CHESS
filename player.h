@@ -39,7 +39,7 @@ public:
 
 	std::map<Pieces*, std::set<std::string>> LegalMovesInCheck();
 
-	void Promotion(Pieces* piece);
+	bool Promotion(Pieces* piece);
 };
 
 bool PlayerTurn(Player& A, Player& B, bool isWhite, int& WinorLose);
