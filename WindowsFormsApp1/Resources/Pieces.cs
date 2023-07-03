@@ -74,12 +74,146 @@ namespace WindowsFormsApp1.Resources
         {
             return isWhite;
         }
-        /*protected bool isHorizontalMove
-        protected bool isVerticalMove
-        protected bool isDiagonalMove
-        protected bool isHorizontalPathClear
-        protected isVerticalPathClear
-        protected isDiagonalPathClear*/
+        public bool isVerticalPathClear(int r, int c, ref Pieces[] board)//will check for pins as well
+        {
+            bool isKing = false;
+            bool isLaser = false;
+            for (int j = r + 1; j < 9; j++)
+            {
+                if (board[8 * (j - 1) + c - 1] != null && board[8 * (j - 1) + c - 1].isWhitePiece() == isWhite)
+                {
+                    if (board[8 * (j - 1) + c - 1].GetName().ToString().ToLower() == "k")
+                        isKing = true;
+                    break;
+                }
+                if (board[8 * (j - 1) + c - 1] != null && board[8 * (j - 1) + c - 1].isWhitePiece() != isWhite &&
+                    (board[8 * (j - 1) + c - 1].GetName().ToString().ToLower() == "q" || board[8 * (j - 1) + c - 1].GetName().ToString().ToLower() == "r"))
+                { isLaser = !isLaser; break; }
+            }
+
+            for (int j = r - 1; j > 0; j--)
+            {
+                if (board[8 * (j - 1) + c - 1] != null && board[8 * (j - 1) + c - 1].isWhitePiece() == isWhite)
+                {
+                    if (board[8 * (j - 1) + c - 1].GetName().ToString().ToLower() == "k")
+                        isKing = true;
+                    break;
+                }
+                if (board[8 * (j - 1) + c - 1] != null && board[8 * (j - 1) + c - 1].isWhitePiece() != isWhite &&
+                    (board[8 * (j - 1) + c - 1].GetName().ToString().ToLower() == "q" || board[8 * (j - 1) + c - 1].GetName().ToString().ToLower() == "r"))
+                { isLaser = !isLaser; break; }
+            }
+
+            if (name.ToString().ToLower() == "k")
+                isKing = true;
+            return !(isKing && isLaser);
+        }
+        public bool isHorizontalPathClear(int r, int c, ref Pieces[] board)
+        {
+            bool isKing = false;
+            bool isLaser = false;
+            for (int i = c + 1; i < 9; i++)
+            {
+                if (board[8 * (r - 1) + i - 1] != null && board[8 * (r - 1) + i - 1].isWhitePiece() == isWhite)
+                {
+                    if (board[8 * (r - 1) + i - 1].GetName().ToString().ToLower() == "k")
+                        isKing = true;
+                    break;
+                }
+                if (board[8 * (r - 1) + i - 1] != null && board[8 * (r - 1) + i - 1].isWhitePiece() != isWhite &&
+                    (board[8 * (r - 1) + i - 1].GetName().ToString().ToLower() == "q" || board[8 * (r - 1) + i - 1].GetName().ToString().ToLower() == "r"))
+                { isLaser = !isLaser; break; }
+            }
+
+            for (int i = c - 1; i > 0; i--)
+            {
+                if (board[8 * (r - 1) + i - 1] != null && board[8 * (r - 1) + i - 1].isWhitePiece() == isWhite)
+                {
+                    if (board[8 * (r - 1) + i - 1].GetName().ToString().ToLower() == "k")
+                        isKing = true;
+                    break;
+                }
+                if (board[8 * (r - 1) + i - 1] != null && board[8 * (r - 1) + i - 1].isWhitePiece() != isWhite &&
+                    (board[8 * (r - 1) + i - 1].GetName().ToString().ToLower() == "q" || board[8 * (r - 1) + i - 1].GetName().ToString().ToLower() == "r"))
+                { isLaser = !isLaser; break; }
+            }
+
+            if (name.ToString().ToLower() == "k")
+                isKing = true;
+            return !(isKing && isLaser);
+        }
+        public bool isDiagonalPathClear1(int r, int c, ref Pieces[] board)
+        {// \
+            bool isKing = false;
+            bool isSkewer = false;
+
+            for (int j = r + 1, i = c - 1; j < 9 && i > 0; j++, i--)
+            {
+                if (board[8 * (j - 1) + i - 1] != null && board[8 * (j - 1) + i - 1].isWhitePiece() == isWhite)
+                {
+                    if (board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "k")
+                        isKing = true;
+                    break;
+                }
+                if (board[8 * (j - 1) + i - 1] != null && board[8 * (j - 1) + i - 1].isWhitePiece() != isWhite &&
+                    (board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "q" || board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "b"))
+                { isSkewer = !isSkewer; break; }
+            }
+
+            for (int j = r - 1, i = c + 1; i < 9 && j > 0; i++, j--)
+            {
+                if (board[8 * (j - 1) + i - 1] != null && board[8 * (j - 1) + i - 1].isWhitePiece() == isWhite)
+                {
+                    if (board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "k")
+                        isKing = true;
+                    break;
+                }
+                if (board[8 * (j - 1) + i - 1] != null && board[8 * (j - 1) + i - 1].isWhitePiece() != isWhite &&
+                    (board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "q" || board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "b"))
+                { isSkewer = !isSkewer; break; }
+            }
+
+            if (name.ToString().ToLower() == "k")
+                isKing = true;
+
+            return !(isKing && isSkewer);
+        }
+        public bool isDiagonalPathClear2(int r, int c, ref Pieces[] board)
+        { // /
+            bool isKing = false;
+            bool isSkewer = false;
+
+            for (int j = r - 1, i = c - 1; j > 0 && i > 0; j--, i--)
+            {
+                if (board[8 * (j - 1) + i - 1] != null && board[8 * (j - 1) + i - 1].isWhitePiece() == isWhite)
+                { 
+                    if (board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "k")
+                        isKing = true; 
+                    break;
+                }
+                if (board[8 * (j - 1) + i - 1] != null && board[8 * (j - 1) + i - 1].isWhitePiece() != isWhite &&
+                    (board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "q" || board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "b"))
+                { isSkewer = !isSkewer; break; }
+            }
+
+            for (int j = r + 1, i = c + 1; i < 9 && j < 9; i++, j++)
+            {
+                if (board[8 * (j - 1) + i - 1] != null && board[8 * (j - 1) + i - 1].isWhitePiece() == isWhite)
+                {
+                    if (board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "k")
+                        isKing = true;
+                    break;
+                }
+                if (board[8 * (j - 1) + i - 1] != null && board[8 * (j - 1) + i - 1].isWhitePiece() != isWhite &&
+                    (board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "q" || board[8 * (j - 1) + i - 1].GetName().ToString().ToLower() == "b"))
+                { isSkewer = !isSkewer; break; }
+            }
+
+            if (name.ToString().ToLower() == "k")
+                isKing = true;
+
+            return !(isKing && isSkewer);
+        }
     }
     internal class Pawn : Pieces
     {
@@ -102,14 +236,18 @@ namespace WindowsFormsApp1.Resources
             if (isWhite)
                 mul = -1;
                 //Moving single square
-            if (y == mul && x == 0 && board[8 * (er - 1) + ec - 1] == null)
+            if (y == mul && x == 0 && board[8 * (er - 1) + ec - 1] == null && isDiagonalPathClear1(r,c,ref board) && isDiagonalPathClear2(r, c, ref board) && isHorizontalPathClear(r, c, ref board))
                 return 0;
                 //double Push
-            if (!hasMoved && y == 2*mul && x == 0 && board[8 * (er - 1) + ec - 1] == null && board[8 * (er - 1 - mul) + ec - 1] == null)
+            if (!hasMoved && y == 2*mul && x == 0 && board[8 * (er - 1) + ec - 1] == null && board[8 * (er - 1 - mul) + ec - 1] == null && isDiagonalPathClear1(r, c, ref board) && isDiagonalPathClear2(r, c, ref board) && isHorizontalPathClear(r, c, ref board))
                 return 0;
             //capture
-            if (y == mul && Math.Abs(x) == 1 && board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+            if (y == mul && Math.Abs(x) == 1 && board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite && isVerticalPathClear(r, c, ref board) && isHorizontalPathClear(r, c, ref board))
+            {
+                if ((y != x && !isDiagonalPathClear2(r, c, ref board)) || (y == x && !isDiagonalPathClear1(r, c, ref board)))
+                    return -1;
                 return 1;
+            }
             return -1;
 
         
@@ -125,18 +263,50 @@ namespace WindowsFormsApp1.Resources
                 img.Image = Properties.Resources.Black_King;
         }
 
+        public bool isHorseCheck(int r, int c, ref Pieces[] board)
+        {
+            if (
+                (r + 2 < 9 && c + 1 < 9 && board[8 * (r - 1 + 2) + c - 1 + 1] != null && board[8 * (r - 1 + 2) + c - 1 + 1].isWhitePiece() != isWhite && board[8 * (r - 1 + 2) + c - 1 + 1].GetName().ToString().ToLower() == "n") ||
+                (r + 2 < 9 && c - 1 > 0 && board[8 * (r - 1 + 2) + c - 1 - 1] != null && board[8 * (r - 1 + 2) + c - 1 - 1].isWhitePiece() != isWhite && board[8 * (r - 1 + 2) + c - 1 - 1].GetName().ToString().ToLower() == "n") ||
+                (r - 2 > 0 && c - 1 > 0 && board[8 * (r - 1 - 2) + c - 1 - 1] != null && board[8 * (r - 1 - 2) + c - 1 - 1].isWhitePiece() != isWhite && board[8 * (r - 1 - 2) + c - 1 - 1].GetName().ToString().ToLower() == "n") ||
+                (r - 2 > 0 && c + 1 < 9 && board[8 * (r - 1 - 2) + c - 1 + 1] != null && board[8 * (r - 1 - 2) + c - 1 + 1].isWhitePiece() != isWhite && board[8 * (r - 1 - 2) + c - 1 + 1].GetName().ToString().ToLower() == "n") ||
+                (r + 1 < 9 && c + 2 < 9 && board[8 * (r - 1 + 1) + c - 1 + 2] != null && board[8 * (r - 1 + 1) + c - 1 + 2].isWhitePiece() != isWhite && board[8 * (r - 1 + 1) + c - 1 + 2].GetName().ToString().ToLower() == "n") ||
+                (r + 1 < 9 && c - 2 > 0 && board[8 * (r - 1 + 1) + c - 1 - 2] != null && board[8 * (r - 1 + 1) + c - 1 - 2].isWhitePiece() != isWhite && board[8 * (r - 1 + 1) + c - 1 - 2].GetName().ToString().ToLower() == "n") ||
+                (r - 1 > 0 && c + 2 < 9 && board[8 * (r - 1 - 1) + c - 1 + 2] != null && board[8 * (r - 1 - 1) + c - 1 + 2].isWhitePiece() != isWhite && board[8 * (r - 1 - 1) + c - 1 + 2].GetName().ToString().ToLower() == "n") ||
+                (r - 1 > 0 && c - 2 > 0 && board[8 * (r - 1 - 1) + c - 1 - 2] != null && board[8 * (r - 1 - 1) + c - 1 - 2].isWhitePiece() != isWhite && board[8 * (r - 1 - 1) + c - 1 - 2].GetName().ToString().ToLower() == "n"))
+                return true;
+            return false;
+
+        }
+
+        public bool isChecked(int r, int c, ref Pieces[] board)
+        {
+            return isHorseCheck(r, c, ref board) || !isDiagonalPathClear1(r, c, ref board) || !isDiagonalPathClear2(r, c, ref board) || !isHorizontalPathClear(r, c, ref board)
+                || !isVerticalPathClear(r, c, ref board);
+        }
+
         override
         public int LegalMove(int er, int ec, ref Pieces[] board)
         {
             if (er > 8 || er < 1 || ec < 1 || ec > 8)
                 return -1;
-            int x = c - ec;
-            int y = r - er;
+            int x = ec - c;
+            int y = er - r;
 
+            if (!hasMoved && y == 0 && Math.Abs(x) == 2)//castling
+            {
+                if (x < 0 && board[8 * (r - 1) + c - 2] == null && board[8 * (r - 1) + c - 3] == null && board[8 * (r - 1) + c - 4] == null && board[8 * (r - 1) + c - 5] != null && !board[8 * (r - 1) + c - 5].hasMoved &&
+                    !isChecked(r, 4, ref board) && !isChecked(r, 3, ref board) && !isChecked(r, 2, ref board))
+                    return -2;//Queen Side castling
+                if ( x > 0 && board[8 * (r - 1) + c] == null && board[8 * (r - 1) + c + 1] == null && board[8 * (r - 1) + c + 2] != null && !board[8 * (r - 1) + c + 2].hasMoved &&
+                    !isChecked(r, 7, ref board) && !isChecked(r, 6, ref board))
+                    return 2;//King side Castling
+
+            }
             if (Math.Abs(x) <= 1 && Math.Abs(y) <= 1) {
-                if (board[8 * (er - 1) + ec - 1] == null)
+                if (board[8 * (er - 1) + ec - 1] == null && !isChecked(er, ec, ref board))
                     return 0;
-                else if (board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                else if(board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite && !isChecked(er, ec, ref board))
                     return 1;
             }
             return -1;
@@ -160,13 +330,15 @@ namespace WindowsFormsApp1.Resources
             int y = er - r;
             int x = ec - c;
 
-            if (Math.Abs(y) == Math.Abs(x))
+            if (Math.Abs(y) == Math.Abs(x) && isVerticalPathClear(r, c, ref board) && isHorizontalPathClear(r, c, ref board))
             {
                 int NS = 1, EW = 1;
                 if (x < 0)
                     EW = -1;
                 if (y < 0)
                     NS = -1;
+                if ((NS != EW && !isDiagonalPathClear2(r, c, ref board)) || (NS == EW && !isDiagonalPathClear1(r, c, ref board)))
+                    return -1;
                 for (int i = r + NS, j = c + EW; i != er && j != ec; i += NS, j += EW)
                     if (board[8 * (i - 1) + j - 1] != null)
                         return -1;
@@ -198,7 +370,8 @@ namespace WindowsFormsApp1.Resources
             int y = er - r;
             int x = ec - c;
 
-            if (y == 0)
+            //horizontal movement
+            if (y == 0 && isDiagonalPathClear1(r, c, ref board) && isDiagonalPathClear2(r, c, ref board) && isVerticalPathClear(r, c, ref board))
             {
                 int s = 1;
                 if (x < 0)
@@ -213,7 +386,7 @@ namespace WindowsFormsApp1.Resources
                 return -1;
             }
 
-            else if (x == 0)
+            else if (x == 0 && isDiagonalPathClear1(r, c, ref board) && isDiagonalPathClear2(r, c, ref board) && isHorizontalPathClear(r, c, ref board))
             {
                 int s = 1;
                 if (y < 0)
@@ -227,6 +400,7 @@ namespace WindowsFormsApp1.Resources
                     return 0;
                 return -1;
             }
+
             return -1;
         }
     }
@@ -249,13 +423,15 @@ namespace WindowsFormsApp1.Resources
             int x = ec - c;
 
             //diagonal
-            if (Math.Abs(y) == Math.Abs(x))
+            if (Math.Abs(y) == Math.Abs(x) && isVerticalPathClear(r , c, ref board) && isHorizontalPathClear (r, c, ref board))
             {
                 int NS = 1, EW = 1;
                 if (x < 0)
                     EW = -1;
                 if (y < 0)
                     NS = -1;
+                if ((NS != EW && !isDiagonalPathClear2(r, c, ref board)) || (NS == EW && !isDiagonalPathClear1(r, c, ref board)))
+                    return -1;
                 for (int i = r + NS, j = c + EW; i != er && j != ec; i += NS, j += EW)
                     if (board[8 * (i - 1) + j - 1] != null)
                         return -1;
@@ -266,7 +442,7 @@ namespace WindowsFormsApp1.Resources
                 return -1;
             }
             //horizontal movement
-            if (y == 0)
+            if (y == 0 && isDiagonalPathClear1(r, c, ref board) && isDiagonalPathClear2(r, c, ref board) && isVerticalPathClear(r, c, ref board))
             {
                 int s = 1;
                 if (x < 0)
@@ -280,8 +456,8 @@ namespace WindowsFormsApp1.Resources
                     return 0;
                 return -1;
             }
-
-            else if (x == 0)
+            //vertical movement
+            else if (x == 0 && isDiagonalPathClear1(r, c, ref board) && isDiagonalPathClear2(r, c, ref board) && isHorizontalPathClear(r, c, ref board))
             {
                 int s = 1;
                 if (y < 0)
@@ -312,7 +488,8 @@ namespace WindowsFormsApp1.Resources
         override
         public int LegalMove(int er, int ec, ref Pieces[] board)
         {
-            if (er > 8 || er < 1 || ec < 1 || ec > 8)
+            if (er > 8 || er < 1 || ec < 1 || ec > 8 ||
+                !isDiagonalPathClear1(r,c, ref board) || !isDiagonalPathClear2(r, c, ref board) || !isHorizontalPathClear(r, c, ref board) || !isVerticalPathClear(r, c, ref board))
                 return -1;
             int y = er - r;
             int x = ec - c;
@@ -328,5 +505,4 @@ namespace WindowsFormsApp1.Resources
 
         }
     }
-
 }

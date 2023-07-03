@@ -20,6 +20,9 @@ namespace WindowsFormsApp1
         private Pieces pieceToMove = null;
         private static int turnCounter = 1;
         List<Pieces> attacked = new List<Pieces>();
+        King BK = null;
+        King WK = null;
+
         int lastCapturePosition;
         public Form1()
         {
@@ -33,7 +36,8 @@ namespace WindowsFormsApp1
             chessBoard[1] = new Knight('n', 1, 2, false);
             chessBoard[2] = new Bishop('b', 1, 3, false);
             chessBoard[3] = new Queen('q', 1, 4, false);
-            chessBoard[4] = new King('k', 1, 5, false);
+            BK = new King('k', 1, 5, false);
+            chessBoard[4] = BK;
             chessBoard[5] = new Bishop('b', 1, 6, false);
             chessBoard[6] = new Knight('n', 1, 7, false);
             chessBoard[7] = new Rook('r', 1, 8, false);
@@ -50,7 +54,8 @@ namespace WindowsFormsApp1
             chessBoard[57] = new Knight('N', 8, 2, true);
             chessBoard[58] = new Bishop('B', 8, 3, true);
             chessBoard[59] = new Queen('Q', 8, 4, true);
-            chessBoard[60] = new King('K', 8, 5, true);
+            WK = new King('K', 8, 5, true);
+            chessBoard[60] = WK;
             chessBoard[61] = new Bishop('B', 8, 6, true);
             chessBoard[62] = new Knight('N', 8, 7, true);
             chessBoard[63] = new Rook('R', 8, 8, true);
@@ -86,8 +91,8 @@ namespace WindowsFormsApp1
             prevSelected = (PictureBox)sender;
             pieceToMove = chessBoard[prevSelected.Location.X / 45 - 1 + 8 * (prevSelected.Location.Y / 45 - 1)];
             if (pieceToMove != null &&
-                (Turn.Text == "Turn: White" && pieceToMove.isWhitePiece()) ||
-                (Turn.Text == "Turn: Black" && !pieceToMove.isWhitePiece())
+                (Turn.Text[6] == 'W' && pieceToMove.isWhitePiece()) ||
+                (Turn.Text[6] == 'B' && !pieceToMove.isWhitePiece())
                 )
                 ((PictureBox)sender).BackColor = Color.Green;
             else
@@ -106,6 +111,8 @@ namespace WindowsFormsApp1
                 return;
             }
 
+            //castling
+
             else if (pieceToMove != null && prevSelected.BackColor == Color.Green)
             {
                 Point newPos = ((PictureBox)sender).Location;
@@ -114,19 +121,18 @@ namespace WindowsFormsApp1
                 int oldBoardPos = prevSelected.Location.X / 45 - 1 + 8 * (prevSelected.Location.Y / 45 - 1);
                 lastCapturePosition = oldBoardPos;
                 Console.WriteLine($"{newPos.X / 45}, {newPos.Y / 45}");
-                //Console.WriteLine(chessBoard[(prevSelected.Location.X / 45) + (prevSelected.Location.Y / 45)].GetName());
-                if (flag)//redundant && pieceToMove.LegalMove(newPos.Y / 45, newPos.X / 45, ref chessBoard))//&& LegalMove
+                if (flag)
                 {
                     Swap(newBoardPos, oldBoardPos);
                     pieceToMove.setRow(newPos.Y / 45);
                     pieceToMove.setCol(newPos.X / 45);
-                    if (Turn.Text == "Turn: White")
+                    if (Turn.Text[6] == 'W')
                     {
                         Turn.Text = "Turn: Black";
                         Turn.BackColor = Color.White;
                         Turn.ForeColor = Color.Black;
                     }
-                    else
+                    else if (Turn.Text[6] == 'B')
                     {
                         Turn.Text = "Turn: White";
                         Turn.BackColor = Color.Black;
@@ -137,7 +143,13 @@ namespace WindowsFormsApp1
                         pieceToMove.hasMoved = true;
                     prevSelected.BackColor = Color.Transparent;
                     ErrorScreen.Text = "Turn: " + turnCounter;
+                    if (BK.isChecked(BK.getRow(), BK.getCol(), ref chessBoard) && Turn.Text[6] == 'B')
+                            Turn.Text += " in CHECK";
+                    else if (WK.isChecked(WK.getRow(), WK.getCol(), ref chessBoard) && Turn.Text[6] == 'W')
+                            Turn.Text += " in CHECK";
+                    
                 }
+
                 else
                     ErrorScreen.Text = "Invalid Move";
                 //Console.WriteLine("Invalid Move");
@@ -149,7 +161,7 @@ namespace WindowsFormsApp1
             //Console.WriteLine("No piece Selected");
         }
 
-        private void potentialMoves(Pieces p)
+        private int potentialMoves(Pieces p)
         {
             int mul = 1;
             if (p.isWhitePiece())
@@ -300,11 +312,24 @@ namespace WindowsFormsApp1
                     DisplayPotentialMoves(p.GetName(), p.getRow() - 2, p.getCol() - 1, p.LegalMove(p.getRow() - 2, p.getCol() - 1, ref chessBoard));
                     break;
 
-                default: break;//Its king time
+                default:
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + 1, p.getCol(), p.LegalMove(p.getRow() + 1, p.getCol(), ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() - 1, p.getCol(), p.LegalMove(p.getRow() - 1, p.getCol(), ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow(), p.getCol() + 1, p.LegalMove(p.getRow(), p.getCol() + 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow(), p.getCol() - 1, p.LegalMove(p.getRow(), p.getCol() - 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + 1, p.getCol() + 1, p.LegalMove(p.getRow() + 1, p.getCol() + 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() - 1, p.getCol() + 1, p.LegalMove(p.getRow() - 1, p.getCol() + 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + 1, p.getCol() - 1, p.LegalMove(p.getRow() + 1, p.getCol() - 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() - 1, p.getCol() - 1, p.LegalMove(p.getRow() - 1, p.getCol() - 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow(), p.getCol() + 2, p.LegalMove(p.getRow(), p.getCol() + 2, ref chessBoard));//Queen Side
+                    DisplayPotentialMoves(p.GetName(), p.getRow(), p.getCol() - 2, p.LegalMove(p.getRow(), p.getCol() - 2, ref chessBoard));//Kng Side
+
+
+                    break;//Its king time
 
             }
 
-            Console.WriteLine(Board.Controls.OfType<Control>().ToList().Count - 32);
+            return Board.Controls.OfType<Control>().ToList().Count - 32;
         }
         private bool SquareBounds(ref Point point)
         {
@@ -365,6 +390,28 @@ namespace WindowsFormsApp1
             attacked.Clear();
         }
 
+        private void Castling(object sender, EventArgs e)
+        {
+            //moving the rook
+            Point newPos = ((PictureBox)sender).Location;
+            int newBoardPos = newPos.X / 45 - 1 + 8 * (newPos.Y / 45 - 1);
+            int oldBoardPos = prevSelected.Location.X / 45 - 1 + 8 * (prevSelected.Location.Y / 45 - 1);
+            if (newBoardPos > oldBoardPos)//king side
+            {
+                Swap(oldBoardPos + 3, newBoardPos - 1);
+                chessBoard[newBoardPos - 1].setRow(newPos.Y / 45);
+                chessBoard[newBoardPos - 1].setCol(newPos.X / 45 - 1);
+            }
+            else//Queen Side
+            { 
+                Swap(oldBoardPos - 4, newBoardPos + 1);
+                chessBoard[newBoardPos + 1].setRow(newPos.Y / 45);
+                chessBoard[newBoardPos + 1].setCol(newPos.X / 45 + 1);
+            }
+
+            MovePiece(sender, e);
+
+        }
         private void DisplayPotentialMoves(char n, int r, int c, int CaptureOrMove)
         {
             switch (CaptureOrMove)
@@ -387,6 +434,22 @@ namespace WindowsFormsApp1
                 case 1://Capture
                     attacked.Add(chessBoard[8 * (r - 1) + c - 1]);
                     attacked.Last().GetImage().BackColor = Color.LightCoral;
+                    break;
+
+                case 2:
+                case -2:
+                    PictureBox castlingPos = new PictureBox
+                    {
+                        Name = n + c.ToString() + r.ToString(),
+                        Parent = Board,
+                        BackColor = Color.LightBlue,
+                        Location = new Point(c * 45, r * 45),
+                        Size = new Size(45, 45),
+                        BorderStyle = BorderStyle.FixedSingle,
+                        Tag = Board
+                    };
+                    castlingPos.Click += new EventHandler(Castling);
+                    Board.Controls.Add(castlingPos);
                     break;
 
                 default:
