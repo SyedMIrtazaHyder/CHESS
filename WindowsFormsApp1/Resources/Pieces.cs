@@ -104,7 +104,7 @@ namespace WindowsFormsApp1.Resources
             if (y == mul && x == 0 && board[8 * (er - 1) + ec - 1] == null)
                 return true;
                 //double Push
-            if (!hasMoved && y == 2*mul && x == 0 && board[8 * (er - 1) + ec - 1] == null && board[8 * (er - 2) + ec - 1] == null)
+            if (!hasMoved && y == 2*mul && x == 0 && board[8 * (er - 1) + ec - 1] == null && board[8 * (er - 1 - mul) + ec - 1] == null)
                 return true;
             //capture
             if (y == mul && Math.Abs(x) == 1 && board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)

@@ -19,7 +19,8 @@ namespace WindowsFormsApp1
         private Pieces[] chessBoard = new Pieces[64];
         private Pieces pieceToMove = null;
         private static int turnCounter = 1;
-        List<PictureBox> pieceMoves = new List<PictureBox>();
+        List<Pieces> attacked = new List<Pieces>();
+        int lastCapturePosition;
         public Form1()
         {
             InitializeComponent();
@@ -69,6 +70,17 @@ namespace WindowsFormsApp1
         }
         private void ClickOnPiece(object sender, EventArgs e)
         {
+            if (((PictureBox)sender).BackColor == Color.LightCoral)//capture logic
+            {
+                MovePiece(sender, e);
+                if (((PictureBox)sender).Location == prevSelected.Location)
+                {
+                    ((PictureBox)sender).Visible = false;//piece overwritten when new piece on top of it
+                    chessBoard[lastCapturePosition] = null;//removing captured piece from board entirely
+                }
+                return;
+            }
+            CleanUpMoves();
             if (prevSelected != null)
                 prevSelected.BackColor = Color.Transparent;
             prevSelected = (PictureBox)sender;
@@ -81,7 +93,7 @@ namespace WindowsFormsApp1
             else
                 ((PictureBox)sender).BackColor = Color.Red;
 
-            //potentialMoves(pieceToMove, ref pieceMoves);
+            potentialMoves(pieceToMove);
             //Console.Write("Now on:" + sender.ToString());
         }
 
@@ -96,13 +108,14 @@ namespace WindowsFormsApp1
 
             else if (pieceToMove != null && prevSelected.BackColor == Color.Green)
             {
-                Point newPos = ((MouseEventArgs)e).Location;
+                Point newPos = ((PictureBox)sender).Location;
                 bool flag = SquareBounds(ref newPos);
                 int newBoardPos = newPos.X / 45 - 1 + 8 * (newPos.Y / 45 - 1);
                 int oldBoardPos = prevSelected.Location.X / 45 - 1 + 8 * (prevSelected.Location.Y / 45 - 1);
+                lastCapturePosition = oldBoardPos;
                 Console.WriteLine($"{newPos.X / 45}, {newPos.Y / 45}");
                 //Console.WriteLine(chessBoard[(prevSelected.Location.X / 45) + (prevSelected.Location.Y / 45)].GetName());
-                if (flag && pieceToMove.LegalMove(newPos.Y / 45, newPos.X / 45, ref chessBoard))//&& LegalMove
+                if (flag)//redundant && pieceToMove.LegalMove(newPos.Y / 45, newPos.X / 45, ref chessBoard))//&& LegalMove
                 {
                     Swap(newBoardPos, oldBoardPos);
                     pieceToMove.setRow(newPos.Y / 45);
@@ -132,11 +145,11 @@ namespace WindowsFormsApp1
             }
             else
                 ErrorScreen.Text = "No Piece Selected";
-            //pieceMoves.Clear();
+            CleanUpMoves();
             //Console.WriteLine("No piece Selected");
         }
 
-        private void potentialMoves(Pieces p, ref List<PictureBox> l)
+        private void potentialMoves(Pieces p)
         {
             int mul = 1;
             if (p.isWhitePiece())
@@ -149,29 +162,51 @@ namespace WindowsFormsApp1
                     {
                         PictureBox possiblePos = new PictureBox
                         {
+                            Name = "p1",
                             Parent = Board,
                             BackColor = Color.LightYellow,
                             Location = new Point(p.getCol() * 45, (p.getRow() + mul) * 45),
-                            Size = new Size(45, 45)
+                            Size = new Size(45, 45),
+                            BorderStyle = BorderStyle.FixedSingle,
+                            Tag = Board
                         };
-                        l.Add(possiblePos);
+                        possiblePos.Click += new EventHandler(MovePiece);
+                        Board.Controls.Add(possiblePos);
                     }
 
                     if (p.LegalMove(p.getRow() + 2 * mul, p.getCol(), ref chessBoard))//Double Push
                     {
                         PictureBox possiblePos = new PictureBox
                         {
+                            Name = "p2",
                             Parent = Board,
                             BackColor = Color.LightYellow,
                             Location = new Point(p.getCol() * 45, (p.getRow() + 2 * mul) * 45),
-                            Size = new Size(45, 45)
+                            Size = new Size(45, 45),
+                            BorderStyle = BorderStyle.FixedSingle,
+                            Tag = Board
                         };
-                        l.Add(possiblePos);
+                        possiblePos.Click += new EventHandler(MovePiece);
+                        Board.Controls.Add(possiblePos);
                     }
-                    break;
+                    //captures
+                    if (p.LegalMove(p.getRow() + mul, p.getCol() + 1, ref chessBoard))
+                    {
+                        attacked.Add(chessBoard[8 * (p.getRow() + mul - 1) + p.getCol()]);
+                        attacked.Last().GetImage().BackColor = Color.LightCoral;
+                    }
+                    if (p.LegalMove(p.getRow() + mul, p.getCol() - 1, ref chessBoard))
+                    {
+                        attacked.Add(chessBoard[8 * (p.getRow() + mul - 1) + p.getCol() - 2]);
+                        attacked.Last().GetImage().BackColor = Color.LightCoral;
+                    }
+                        break;
+
                 default: break;
 
             }
+
+            Console.WriteLine(Board.Controls.OfType<Control>().ToList().Count - 32);
         }
         private bool SquareBounds(ref Point point)
         {
@@ -220,6 +255,16 @@ namespace WindowsFormsApp1
             else if (point.X < 405)
                 point.X = 360;
             return true;
+        }
+
+        private void CleanUpMoves()
+        {
+            foreach (Control item in Board.Controls.OfType<Control>().ToList())
+                if (item.Tag == Board)
+                    Board.Controls.Remove(item);
+            foreach(Pieces p in attacked)
+                p.GetImage().BackColor = Color.Transparent;
+            attacked.Clear();
         }
     }
 }
