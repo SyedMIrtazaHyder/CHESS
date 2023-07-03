@@ -1,6 +1,4 @@
 # Data-Structure-Project: CHESS ENGINE
-## This branch contains two programs
-The files ending with cpp is the chess made using C++ and has an implemented bot. The other Folders and sln file is for GUI 2 player chess in C#.
 ## Story</br>
 This project was made for our course EC-200 Data Structure. When we first started this project out we had thought to make it in our own terms and make the project using mainly OOP and DS concepts. Hence this implementation does not use bitboards or any other chess programming concepts generally used by people who persue to a working chess Engine. Generally theo outline for how to start working on any chess engine are listed here: https://www.chessprogramming.org/Main_Page </br>
 The Project involved many parts, and me and my teammate learned a lot along the way. This was the first project I had used Git Bash for, as well as the first project where I broke down the whole code into smaller segments using header files.</br>
