@@ -32,8 +32,8 @@ namespace WindowsFormsApp1
             chessBoard[0] = new Rook('r', 1, 1, false);
             chessBoard[1] = new Knight('n', 1, 2, false);
             chessBoard[2] = new Bishop('b', 1, 3, false);
-            chessBoard[3] = new Queen('k', 1, 4, false);
-            chessBoard[4] = new King('q', 1, 5, false);
+            chessBoard[3] = new Queen('q', 1, 4, false);
+            chessBoard[4] = new King('k', 1, 5, false);
             chessBoard[5] = new Bishop('b', 1, 6, false);
             chessBoard[6] = new Knight('n', 1, 7, false);
             chessBoard[7] = new Rook('r', 1, 8, false);
@@ -58,7 +58,7 @@ namespace WindowsFormsApp1
             foreach (Pieces p in chessBoard)
                 if (p != null)
                 {
-                    p.GetImage().Click += new EventHandler(this.ClickOnPiece);
+                    p.GetImage().Click += new EventHandler(ClickOnPiece);
                     p.GetImage().Parent = Board;
                 }
             ErrorScreen.Text = "CHESS GAME STARTED";
@@ -85,7 +85,7 @@ namespace WindowsFormsApp1
                 prevSelected.BackColor = Color.Transparent;
             prevSelected = (PictureBox)sender;
             pieceToMove = chessBoard[prevSelected.Location.X / 45 - 1 + 8 * (prevSelected.Location.Y / 45 - 1)];
-            if (pieceToMove != null && 
+            if (pieceToMove != null &&
                 (Turn.Text == "Turn: White" && pieceToMove.isWhitePiece()) ||
                 (Turn.Text == "Turn: Black" && !pieceToMove.isWhitePiece())
                 )
@@ -158,51 +158,149 @@ namespace WindowsFormsApp1
             {
                 case 'P':
                 case 'p':
-                    if (p.LegalMove(p.getRow() + mul, p.getCol(), ref chessBoard))//Single Push
-                    {
-                        PictureBox possiblePos = new PictureBox
-                        {
-                            Name = "p1",
-                            Parent = Board,
-                            BackColor = Color.LightYellow,
-                            Location = new Point(p.getCol() * 45, (p.getRow() + mul) * 45),
-                            Size = new Size(45, 45),
-                            BorderStyle = BorderStyle.FixedSingle,
-                            Tag = Board
-                        };
-                        possiblePos.Click += new EventHandler(MovePiece);
-                        Board.Controls.Add(possiblePos);
-                    }
-
-                    if (p.LegalMove(p.getRow() + 2 * mul, p.getCol(), ref chessBoard))//Double Push
-                    {
-                        PictureBox possiblePos = new PictureBox
-                        {
-                            Name = "p2",
-                            Parent = Board,
-                            BackColor = Color.LightYellow,
-                            Location = new Point(p.getCol() * 45, (p.getRow() + 2 * mul) * 45),
-                            Size = new Size(45, 45),
-                            BorderStyle = BorderStyle.FixedSingle,
-                            Tag = Board
-                        };
-                        possiblePos.Click += new EventHandler(MovePiece);
-                        Board.Controls.Add(possiblePos);
-                    }
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + mul, p.getCol(), p.LegalMove(p.getRow() + mul, p.getCol(), ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + 2 * mul, p.getCol(), p.LegalMove(p.getRow() + 2 * mul, p.getCol(), ref chessBoard));
                     //captures
-                    if (p.LegalMove(p.getRow() + mul, p.getCol() + 1, ref chessBoard))
-                    {
-                        attacked.Add(chessBoard[8 * (p.getRow() + mul - 1) + p.getCol()]);
-                        attacked.Last().GetImage().BackColor = Color.LightCoral;
-                    }
-                    if (p.LegalMove(p.getRow() + mul, p.getCol() - 1, ref chessBoard))
-                    {
-                        attacked.Add(chessBoard[8 * (p.getRow() + mul - 1) + p.getCol() - 2]);
-                        attacked.Last().GetImage().BackColor = Color.LightCoral;
-                    }
-                        break;
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + mul, p.getCol() + 1, p.LegalMove(p.getRow() + mul, p.getCol() + 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + mul, p.getCol() - 1, p.LegalMove(p.getRow() + mul, p.getCol() - 1, ref chessBoard));
+                    break;
 
-                default: break;
+                case 'R':
+                case 'r':
+                    for (int i = p.getCol() + 1; i < 9; i++)//right
+                    {
+                        if (p.LegalMove(p.getRow(), i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), p.getRow(), i, p.LegalMove(p.getRow(), i, ref chessBoard));
+                    }
+                    for (int i = p.getCol() - 1; i > 0; i--)//left
+                    {
+                        if (p.LegalMove(p.getRow(), i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), p.getRow(), i, p.LegalMove(p.getRow(), i, ref chessBoard));
+                    }
+                    for (int j = p.getRow() + 1; j < 9; j++)//up
+                    {
+                        if (p.LegalMove(j, p.getCol(), ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, p.getCol(), p.LegalMove(j, p.getCol(), ref chessBoard));
+                    }
+                    for (int j = p.getRow() - 1; j > 0; j--)//down
+                    {
+                        if (p.LegalMove(j, p.getCol(), ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, p.getCol(), p.LegalMove(j, p.getCol(), ref chessBoard));
+                    }
+                    break;
+
+                case 'B':
+                case 'b':
+                    for (int i = p.getCol() + 1, j = p.getRow() + 1; i < 9 && j < 9; i++, j++)//NE
+                    {
+                        if (p.LegalMove(j, i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, i, p.LegalMove(j, i, ref chessBoard));
+                    }
+                    for (int i = p.getCol() - 1, j = p.getRow() + 1; i > 0 && j < 9; i--, j++)//NW
+                    {
+                        if (p.LegalMove(j, i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, i, p.LegalMove(j, i, ref chessBoard));
+
+                    }
+                    for (int i = p.getCol() + 1, j = p.getRow() - 1; i < 9 && j > 0; i++, j--)//SE
+                    {
+                        if (p.LegalMove(j, i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, i, p.LegalMove(j, i, ref chessBoard));
+
+                    }
+                    for (int i = p.getCol() - 1, j = p.getRow() - 1; i > 0 && j > 0; i--, j--)//SW
+                    {
+                        if (p.LegalMove(j, i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, i, p.LegalMove(j, i, ref chessBoard));
+                    }
+                    break;
+
+                case 'Q':
+                case 'q':
+                    for (int i = p.getCol() + 1; i < 9; i++)//right
+                    {
+                        if (p.LegalMove(p.getRow(), i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), p.getRow(), i, p.LegalMove(p.getRow(), i, ref chessBoard));
+                    }
+                    for (int i = p.getCol() - 1; i > 0; i--)//left
+                    {
+                        if (p.LegalMove(p.getRow(), i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), p.getRow(), i, p.LegalMove(p.getRow(), i, ref chessBoard));
+                    }
+                    for (int j = p.getRow() + 1; j < 9; j++)//up
+                    {
+                        if (p.LegalMove(j, p.getCol(), ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, p.getCol(), p.LegalMove(j, p.getCol(), ref chessBoard));
+                    }
+                    for (int j = p.getRow() - 1; j > 0; j--)//down
+                    {
+                        if (p.LegalMove(j, p.getCol(), ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, p.getCol(), p.LegalMove(j, p.getCol(), ref chessBoard));
+                    }
+                    for (int i = p.getCol() + 1, j = p.getRow() + 1; i < 9 && j < 9; i++, j++)//NE
+                    {
+                        if (p.LegalMove(j, i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, i, p.LegalMove(j, i, ref chessBoard));
+                    }
+                    for (int i = p.getCol() - 1, j = p.getRow() + 1; i > 0 && j < 9; i--, j++)//NW
+                    {
+                        if (p.LegalMove(j, i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, i, p.LegalMove(j, i, ref chessBoard));
+
+                    }
+                    for (int i = p.getCol() + 1, j = p.getRow() - 1; i < 9 && j > 0; i++, j--)//SE
+                    {
+                        if (p.LegalMove(j, i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, i, p.LegalMove(j, i, ref chessBoard));
+
+                    }
+                    for (int i = p.getCol() - 1, j = p.getRow() - 1; i > 0 && j > 0; i--, j--)//SW
+                    {
+                        if (p.LegalMove(j, i, ref chessBoard) == -1)
+                            break;
+                        DisplayPotentialMoves(p.GetName(), j, i, p.LegalMove(j, i, ref chessBoard));
+                    }
+                    break;
+
+                case 'N':
+                case 'n':
+                    //--|
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + 1, p.getCol() + 2, p.LegalMove(p.getRow() + 1, p.getCol() + 2, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() - 1, p.getCol() + 2, p.LegalMove(p.getRow() - 1, p.getCol() + 2, ref chessBoard));
+
+                    //|--
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + 1, p.getCol() - 2, p.LegalMove(p.getRow() + 1, p.getCol() - 2, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() - 1, p.getCol() - 2, p.LegalMove(p.getRow() - 1, p.getCol() - 2, ref chessBoard));
+
+                    // |
+                    //-|
+                    // |
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + 2, p.getCol() + 1, p.LegalMove(p.getRow() + 2, p.getCol() + 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() - 2, p.getCol() + 1, p.LegalMove(p.getRow() - 2, p.getCol() + 1, ref chessBoard));
+
+                    //|
+                    //|-
+                    //|
+                    DisplayPotentialMoves(p.GetName(), p.getRow() + 2, p.getCol() - 1, p.LegalMove(p.getRow() + 2, p.getCol() - 1, ref chessBoard));
+                    DisplayPotentialMoves(p.GetName(), p.getRow() - 2, p.getCol() - 1, p.LegalMove(p.getRow() - 2, p.getCol() - 1, ref chessBoard));
+                    break;
+
+                default: break;//Its king time
 
             }
 
@@ -262,9 +360,38 @@ namespace WindowsFormsApp1
             foreach (Control item in Board.Controls.OfType<Control>().ToList())
                 if (item.Tag == Board)
                     Board.Controls.Remove(item);
-            foreach(Pieces p in attacked)
+            foreach (Pieces p in attacked)
                 p.GetImage().BackColor = Color.Transparent;
             attacked.Clear();
+        }
+
+        private void DisplayPotentialMoves(char n, int r, int c, int CaptureOrMove)
+        {
+            switch (CaptureOrMove)
+            {
+                case 0://Normal Move
+                    PictureBox possiblePos = new PictureBox
+                    {
+                        Name = n + c.ToString() + r.ToString(),
+                        Parent = Board,
+                        BackColor = Color.LightYellow,
+                        Location = new Point(c * 45, r * 45),
+                        Size = new Size(45, 45),
+                        BorderStyle = BorderStyle.FixedSingle,
+                        Tag = Board
+                    };
+                    possiblePos.Click += new EventHandler(MovePiece);
+                    Board.Controls.Add(possiblePos);
+                    break;
+
+                case 1://Capture
+                    attacked.Add(chessBoard[8 * (r - 1) + c - 1]);
+                    attacked.Last().GetImage().BackColor = Color.LightCoral;
+                    break;
+
+                default:
+                    break;
+            }
         }
     }
 }

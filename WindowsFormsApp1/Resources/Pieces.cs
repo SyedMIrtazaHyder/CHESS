@@ -36,7 +36,7 @@ namespace WindowsFormsApp1.Resources
             img.Name = name.ToString();
             img.SizeMode = PictureBoxSizeMode.StretchImage;
         }
-        public abstract bool LegalMove(int er, int ec, ref Pieces[] board);
+        public abstract int LegalMove(int er, int ec, ref Pieces[] board);
 
         public PictureBox GetImage()
         {
@@ -81,7 +81,6 @@ namespace WindowsFormsApp1.Resources
         protected isVerticalPathClear
         protected isDiagonalPathClear*/
     }
-
     internal class Pawn : Pieces
     {
         public Pawn(char name, int r, int c, bool isWhite) : base(name, r, c, isWhite)
@@ -93,8 +92,10 @@ namespace WindowsFormsApp1.Resources
         }
 
         override
-        public bool LegalMove(int er, int ec, ref Pieces[] board)
+        public int LegalMove(int er, int ec, ref Pieces[] board)
         {
+            if (er > 8 || er < 1 || ec < 1 || ec > 8)
+                return -1;
             int y = er - r;
             int x = ec - c;
             int mul = 1;
@@ -102,19 +103,18 @@ namespace WindowsFormsApp1.Resources
                 mul = -1;
                 //Moving single square
             if (y == mul && x == 0 && board[8 * (er - 1) + ec - 1] == null)
-                return true;
+                return 0;
                 //double Push
             if (!hasMoved && y == 2*mul && x == 0 && board[8 * (er - 1) + ec - 1] == null && board[8 * (er - 1 - mul) + ec - 1] == null)
-                return true;
+                return 0;
             //capture
             if (y == mul && Math.Abs(x) == 1 && board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
-                return true;
-            return false;
+                return 1;
+            return -1;
 
         
         }
     }
-
     internal class King : Pieces
     {
         public King(char name, int r, int c, bool isWhite) : base(name, r, c, isWhite)
@@ -126,17 +126,22 @@ namespace WindowsFormsApp1.Resources
         }
 
         override
-        public bool LegalMove(int er, int ec, ref Pieces[] board)
+        public int LegalMove(int er, int ec, ref Pieces[] board)
         {
+            if (er > 8 || er < 1 || ec < 1 || ec > 8)
+                return -1;
             int x = c - ec;
             int y = r - er;
 
-            if (Math.Abs(x) <= 1 && Math.Abs(y) <= 1 && (board[8 * (er - 1) + ec - 1] == null || board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite))
-                return true;
-            return false;
+            if (Math.Abs(x) <= 1 && Math.Abs(y) <= 1) {
+                if (board[8 * (er - 1) + ec - 1] == null)
+                    return 0;
+                else if (board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                    return 1;
+            }
+            return -1;
         }
     }
-
     internal class Bishop : Pieces
     {
         public Bishop(char name, int r, int c, bool isWhite) : base(name, r, c, isWhite)
@@ -148,31 +153,33 @@ namespace WindowsFormsApp1.Resources
         }
 
         override
-        public bool LegalMove(int er, int ec, ref Pieces[] board)
+        public int LegalMove(int er, int ec, ref Pieces[] board)
         {
+            if (er > 8 || er < 1 || ec < 1 || ec > 8)
+                return -1;
             int y = er - r;
             int x = ec - c;
 
             if (Math.Abs(y) == Math.Abs(x))
             {
                 int NS = 1, EW = 1;
-                if (x > 0)
+                if (x < 0)
                     EW = -1;
-                if (y > 0)
+                if (y < 0)
                     NS = -1;
-                for(int i = er, j = ec; i != r && j != c; i+=NS, j+=EW)
-                    if (board[8*(i-1) + j - 1] != null)
-                        return false;
-                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() == isWhite)
-                    return false;
-                return true;
-
+                for (int i = r + NS, j = c + EW; i != er && j != ec; i += NS, j += EW)
+                    if (board[8 * (i - 1) + j - 1] != null)
+                        return -1;
+                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                    return 1;
+                if (board[8 * (er - 1) + ec - 1] == null)
+                    return 0;
+                return -1;
             }
 
-            return false;
+            return -1;
         }
     }
-
     internal class Rook : Pieces
     {
         public Rook(char name, int r, int c, bool isWhite) : base(name, r, c, isWhite)
@@ -184,41 +191,45 @@ namespace WindowsFormsApp1.Resources
         }
 
         override
-        public bool LegalMove(int er, int ec, ref Pieces[] board)
+        public int LegalMove(int er, int ec, ref Pieces[] board)
         {
+            if (er > 8 || er < 1 || ec < 1 || ec > 8)
+                return -1;
             int y = er - r;
             int x = ec - c;
 
-            if (y == 0)//horizontal movement
+            if (y == 0)
             {
                 int s = 1;
-                if (x > 0)
+                if (x < 0)
                     s = -1;
-                for (int temp = ec; temp != c; temp += s)//obstacle b/w sliding
+                for (int temp = c + s; temp != ec; temp += s)//obstacle b/w sliding
                     if (board[8 * (er - 1) + temp - 1] != null)
-                        return false;
-                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() == isWhite)
-                    return false;
-                return true;
+                        return -1;
+                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                    return 1;
+                if (board[8 * (er - 1) + ec - 1] == null)
+                    return 0;
+                return -1;
             }
 
             else if (x == 0)
-            { 
+            {
                 int s = 1;
-                if (y > 0)
+                if (y < 0)
                     s = -1;
-                for (int temp = er; temp != r; temp += s)//obstacle b/w sliding
+                for (int temp = r + s; temp != er; temp += s)//obstacle b/w sliding
                     if (board[8 * (temp - 1) + ec - 1] != null)
-                        return false;
-                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() == isWhite)
-                    return false;
-                return true;
+                        return -1;
+                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                    return 1;
+                if (board[8 * (er - 1) + ec - 1] == null)
+                    return 0;
+                return -1;
             }
-
-            return false;
+            return -1;
         }
     }
-
     internal class Queen : Pieces
     {
         public Queen(char name, int r, int c, bool isWhite) : base(name, r, c, isWhite)
@@ -230,8 +241,10 @@ namespace WindowsFormsApp1.Resources
         }
 
         override
-        public bool LegalMove(int er, int ec, ref Pieces[] board)
+        public int LegalMove(int er, int ec, ref Pieces[] board)
         {
+            if (er > 8 || er < 1 || ec < 1 || ec > 8)
+                return -1;
             int y = er - r;
             int x = ec - c;
 
@@ -239,49 +252,53 @@ namespace WindowsFormsApp1.Resources
             if (Math.Abs(y) == Math.Abs(x))
             {
                 int NS = 1, EW = 1;
-                if (x > 0)
+                if (x < 0)
                     EW = -1;
-                if (y > 0)
+                if (y < 0)
                     NS = -1;
-                for (int i = er, j = ec; i != r && j != c; i += NS, j += EW)
+                for (int i = r + NS, j = c + EW; i != er && j != ec; i += NS, j += EW)
                     if (board[8 * (i - 1) + j - 1] != null)
-                        return false;
-                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() == isWhite)
-                    return false;
-                return true;
-
+                        return -1;
+                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                    return 1;
+                if (board[8 * (er - 1) + ec - 1] == null)
+                    return 0;
+                return -1;
             }
-
-            else if (y == 0)//horizontal movement
+            //horizontal movement
+            if (y == 0)
             {
                 int s = 1;
-                if (x > 0)
+                if (x < 0)
                     s = -1;
-                for (int temp = ec; temp != c; temp += s)//obstacle b/w sliding
+                for (int temp = c + s; temp != ec; temp += s)//obstacle b/w sliding
                     if (board[8 * (er - 1) + temp - 1] != null)
-                        return false;
-                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() == isWhite)
-                    return false;
-                return true;
+                        return -1;
+                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                    return 1;
+                if (board[8 * (er - 1) + ec - 1] == null)
+                    return 0;
+                return -1;
             }
 
             else if (x == 0)
             {
                 int s = 1;
-                if (y > 0)
+                if (y < 0)
                     s = -1;
-                for (int temp = er; temp != r; temp += s)//obstacle b/w sliding
+                for (int temp = r + s; temp != er; temp += s)//obstacle b/w sliding
                     if (board[8 * (temp - 1) + ec - 1] != null)
-                        return false;
-                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() == isWhite)
-                    return false;
-                return true;
+                        return -1;
+                if (board[8 * (er - 1) + ec - 1] != null && board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                    return 1;
+                if (board[8 * (er - 1) + ec - 1] == null)
+                    return 0;
+                return -1;
             }
 
-            return false;
+            return -1;
         }
     }
-
     internal class Knight : Pieces
     {
         public Knight(char name, int r, int c, bool isWhite) : base(name, r, c, isWhite)
@@ -293,15 +310,21 @@ namespace WindowsFormsApp1.Resources
         }
 
         override
-        public bool LegalMove(int er, int ec, ref Pieces[] board)
+        public int LegalMove(int er, int ec, ref Pieces[] board)
         {
+            if (er > 8 || er < 1 || ec < 1 || ec > 8)
+                return -1;
             int y = er - r;
             int x = ec - c;
 
             if ((Math.Abs(x) == 2 && Math.Abs(y) == 1) || (Math.Abs(x) == 1 && Math.Abs(y) == 2))
-                if(board[8 * (er - 1) + ec - 1] == null || board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
-                    return true;
-            return false;
+                {
+                if (board[8 * (er - 1) + ec - 1] == null)
+                    return 0;
+                 else if (board[8 * (er - 1) + ec - 1].isWhitePiece() != isWhite)
+                        return 1;
+                }
+            return -1;
 
         }
     }
